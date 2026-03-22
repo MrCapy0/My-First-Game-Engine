@@ -1,9 +1,8 @@
-package myfirstgameengine
+package main
 
-import "core:fmt"
+import engine "src/engine"
 
-main :: proc ()
-{
-    fmt.printfln("hello, world")
-    return;
+main :: proc() {
+
+	engine.run()
 }
