@@ -1,8 +1,13 @@
-game = {}
+require("src.engine.app")
+require("src.engine.console")
 
-function game:start()
+Game = {}
+
+function Game:Start()
 end
 
-function game:Update()
-    engine.println("hello")
+function Game:Update()
+    App.set_camera_3d({ 5, 1, -5 }, { 0, 0, 1 })
+
+    Console.log("hello, world")
 end

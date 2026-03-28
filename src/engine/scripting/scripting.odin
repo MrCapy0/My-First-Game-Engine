@@ -1,9 +1,11 @@
 package scripting
 
+import "../console"
 import runtime "base:runtime"
 import c "core:c"
 import fmt "core:fmt"
 import lua "vendor:lua/5.4"
+import "vendor:raylib"
 
 Lua :: ^lua.State
 Type :: lua.Type
@@ -26,7 +28,6 @@ Func :: struct {
 Table :: struct {
 	name:      cstring,
 	functions: []Func,
-	tables:    []Table,
 }
 
 FieldRef :: struct {
@@ -36,18 +37,32 @@ FieldRef :: struct {
 
 
 @(private)
-lua_state: ^lua.State
+_lua_state: ^lua.State
 
 @(private)
 _context: runtime.Context
 
+@(private)
+_lua_stack: Int
 
 init :: proc() {
 
 	_context = context
-	lua_state = lua.newstate(lua_allocator, &_context)
+	_lua_state = lua.newstate(lua_allocator, &_context)
+	lua.L_openlibs(_lua_state)
+
+	add_table(table_console)
+	add_table(app_table)
+
+	status := lua.Status(lua.L_dofile(_lua_state, "main.lua"))
+	if status != .OK {
+		err_msg := lua.tostring(_lua_state, -1)
+		fmt.printfln("LUA ERROR: %s", err_msg)
+		lua.pop(_lua_state, 1)
+	}
 }
 
+@(private)
 add_table :: proc(table: Table) {
 
 	functions_len := len(table.functions)
@@ -65,22 +80,18 @@ add_table :: proc(table: Table) {
 		}
 	}
 
-	lua.L_newlib(lua_state, functions_list)
-	lua.setglobal(lua_state, table.name)
-}
-
-load_scripts :: proc() {
-	status := lua.L_dofile(lua_state, "main.lua")
+	lua.L_newlib(_lua_state, functions_list)
+	lua.setglobal(_lua_state, table.name)
 }
 
 get_field :: proc(table: cstring, field: cstring, result: ^FieldRef) -> Status {
 
-	top := lua.gettop(lua_state)
-	defer lua.settop(lua_state, top)
+	check_stack()
 
-	fmt.printfln("initial: %d", lua.gettop(lua_state))
+	defer assert_stack()
+
 	result^ = {}
-	upper_type := lua.Type(lua.getglobal(lua_state, table))
+	upper_type := lua.Type(lua.getglobal(_lua_state, table))
 	status := Status.OK
 
 	if upper_type == Type.NIL {
@@ -89,26 +100,23 @@ get_field :: proc(table: cstring, field: cstring, result: ^FieldRef) -> Status {
 		status = .INVALID_TABLE
 	}
 
+	if status != .OK {
+		lua.pop(_lua_state, 1)
+		return status
+	}
+
 	if status == Status.OK {
-		field_type := lua.Type(lua.getfield(lua_state, -1, field))
+		field_type := lua.Type(lua.getfield(_lua_state, -1, field))
 
 		result^ = FieldRef {
-			id   = lua.L_ref(lua_state, lua.REGISTRYINDEX),
+			id   = lua.L_ref(_lua_state, lua.REGISTRYINDEX),
 			type = field_type,
 		}
 	}
 
-	return status
-}
+	lua.pop(_lua_state, 1)
 
-print_stack_debug :: proc() {
-	top := lua.gettop(lua_state)
-	fmt.printfln("--- STACK TOP: %d ---", top)
-	for i in 1 ..= top {
-		type := lua.type(lua_state, i)
-		fmt.printfln("[%d] %s", i, lua.typename(lua_state, type))
-	}
-	fmt.println("---------------------")
+	return status
 }
 
 run_func :: proc(func: ^FieldRef) {
@@ -117,24 +125,56 @@ run_func :: proc(func: ^FieldRef) {
 		return
 	}
 
-	top := lua.gettop(lua_state)
-	defer lua.settop(lua_state, top)
-
-	current_type := Type(lua.rawgeti(lua_state, lua.REGISTRYINDEX, lua.Integer(func.id)))
+	current_type := Type(lua.rawgeti(_lua_state, lua.REGISTRYINDEX, lua.Integer(func.id)))
 
 	if current_type != func.type {
 		func.type = current_type
 	}
 
 	if func.type == .FUNCTION {
-		if lua.pcall(lua_state, 0, 0, 0) != 0 {
-			fmt.printfln("Error: %s", lua.tostring(lua_state, -1))
+		if lua.pcall(_lua_state, 0, 0, 0) != 0 {
+			console.error(to_string(-1))
+			lua.pop(_lua_state, 1)
 		}
 	}
 }
 
-get_context :: proc() -> runtime.Context {
+get_context :: #force_inline proc() -> runtime.Context {
 	return _context
+}
+
+to_f32 :: #force_inline proc(index: Int) -> f32 {
+
+	check_stack()
+
+	number := f32(lua.tonumber(_lua_state, index))
+	lua.pop(_lua_state, 1)
+
+	assert_stack()
+
+	return number
+}
+
+to_string :: proc(index: Int) -> cstring {
+	str := lua.tostring(_lua_state, index)
+	return str
+}
+
+to_vec3 :: proc(index: Int) -> raylib.Vector3 {
+
+	v: raylib.Vector3 = {0, 0, 0}
+	check_stack()
+
+	if lua.istable(_lua_state, index) {
+		lua.rawgeti(_lua_state, index, 1); v.x = f32(lua.tonumber(_lua_state, -1))
+		lua.rawgeti(_lua_state, index, 2); v.y = f32(lua.tonumber(_lua_state, -1))
+		lua.rawgeti(_lua_state, index, 3); v.z = f32(lua.tonumber(_lua_state, -1))
+		lua.pop(_lua_state, 3)
+	}
+
+	defer assert_stack()
+
+	return v
 }
 
 @(private)
@@ -155,4 +195,23 @@ lua_allocator :: proc "c" (ud: rawptr, ptr: rawptr, osize, nsize: c.size_t) -> (
 			return
 		}
 	}
+}
+
+@(private)
+@(disabled = !ODIN_DEBUG)
+check_stack :: proc() {
+	_lua_stack = lua.gettop(_lua_state)
+}
+
+@(private)
+@(disabled = !ODIN_DEBUG)
+assert_stack :: proc() {
+
+	stack_size := lua.gettop(_lua_state)
+	message := fmt.tprintfln(
+		"Memory leak allocking lua stack. Was spected %d but is %d",
+		_lua_stack,
+		stack_size,
+	)
+	assert(stack_size == _lua_stack, message)
 }
