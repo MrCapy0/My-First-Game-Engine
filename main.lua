@@ -1,5 +1,6 @@
 require("src.engine.app")
 require("src.engine.console")
+require("src.engine.inputs_keyboard")
 
 Game = {}
 local init_settings = InitSettings:new()
@@ -18,4 +19,10 @@ end
 
 function Game:Update(dt)
     App.set_camera_3d({ 5, 1, -5 }, { 1, 0, 1 })
+    Console.log(Keyboard.was_pressed("space"))
+    --print(Keyboard.was_pressed("space"))
+
+    if Keyboard.was_pressed("space") then
+
+    end
 end

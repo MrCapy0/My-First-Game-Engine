@@ -55,7 +55,8 @@ init :: proc() {
 	lua.L_openlibs(_lua_state)
 
 	add_table(table_console)
-	add_table(app_table)
+	add_table(table_app)
+	add_table(table_inputs_keyboard)
 
 	status := lua.Status(lua.L_dofile(_lua_state, "main.lua"))
 	if status != .OK {
@@ -208,7 +209,7 @@ to_cstring :: #force_inline proc(index: Int) -> cstring {
 
 	// TODO: Check parameter type.
 
-	str := lua.tostring(_lua_state, index)
+	str := lua.L_tostring(_lua_state, index)
 	return str
 }
 
@@ -292,6 +293,11 @@ push_number_f32 :: #force_inline proc(number: f32) {
 push_number :: proc {
 	push_number_f32,
 	push_number_f64,
+}
+
+@(private)
+push_bool :: proc(b: bool) {
+	lua.pushboolean(_lua_state, b32(b))
 }
 
 @(private)

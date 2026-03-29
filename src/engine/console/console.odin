@@ -8,14 +8,13 @@ log :: #force_inline proc(str: string) {
 
 log_fmt :: #force_inline proc(str: string, args: ..any) {
 	fmt.print("INFO: ")
-	fmt.printfln(str, args)
+	fmt.printfln(str, ..args)
 }
 
 warning_fmt :: #force_inline proc(str: string, args: ..any) {
 	fmt.print("WARNING: ")
-	fmt.println(str, args)
+	fmt.printfln(str, ..args)
 }
-
 warning :: #force_inline proc(str: string) {
 	fmt.println("WARNING: ", str)
 }

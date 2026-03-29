@@ -21,7 +21,7 @@ lua_get_delta :: proc "c" (lua: Lua) -> Int {
 }
 
 @(private)
-app_table := Table {
+table_app := Table {
 	name      = "__App",
 	functions = []Func {
 		Func{name = "_set_camera_3d", function = lua_set_camera_3d},
