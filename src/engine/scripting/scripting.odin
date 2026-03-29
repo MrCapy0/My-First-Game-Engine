@@ -1,12 +1,14 @@
 package scripting
 
-import "../console"
 import runtime "base:runtime"
 import c "core:c"
 import fmt "core:fmt"
-import "core:strings"
+import strings "core:strings"
 import lua "vendor:lua/5.4"
-import "vendor:raylib"
+import raylib "vendor:raylib"
+
+import app "../app"
+import console "../console"
 
 Lua :: ^lua.State
 Type :: lua.Type
@@ -113,6 +115,10 @@ get_field :: proc(table: cstring, field: cstring, result: ^FieldRef) -> Status {
 			id   = lua.L_ref(_lua_state, lua.REGISTRYINDEX),
 			type = field_type,
 		}
+
+		if field_type == .NIL {
+			status = .FIELD_DOES_NOT_EXIST
+		}
 	}
 
 	lua.pop(_lua_state, 1)
@@ -172,7 +178,7 @@ run_func :: proc(func: ^FieldRef, table_name: cstring = nil, args: ..any) {
 		}
 
 		if lua.pcall(_lua_state, nargs, 0, 0) != 0 {
-			
+
 			error := to_cstring(-1)
 			console.error(string(error))
 			lua.pop(_lua_state, 1)
@@ -186,6 +192,8 @@ get_context :: #force_inline proc() -> runtime.Context {
 
 to_f32 :: #force_inline proc(index: Int) -> f32 {
 
+	// TODO: Check parameter type.
+
 	check_stack()
 
 	number := f32(lua.tonumber(_lua_state, index))
@@ -196,12 +204,17 @@ to_f32 :: #force_inline proc(index: Int) -> f32 {
 	return number
 }
 
-to_cstring :: proc(index: Int) -> cstring {
+to_cstring :: #force_inline proc(index: Int) -> cstring {
+
+	// TODO: Check parameter type.
+
 	str := lua.tostring(_lua_state, index)
 	return str
 }
 
 to_vec3 :: proc(index: Int) -> raylib.Vector3 {
+
+	// TODO: Check parameter type.
 
 	v: raylib.Vector3 = {0, 0, 0}
 	check_stack()
@@ -218,13 +231,51 @@ to_vec3 :: proc(index: Int) -> raylib.Vector3 {
 	return v
 }
 
+to_init_settings :: proc(index: Int) -> app.InitSettings {
+
+	init_settings := app.InitSettings{}
+	init_settings.window_title = "Game"
+	init_settings.window_width = 800
+	init_settings.window_height = 600
+
+	check_stack()
+
+	if lua.istable(_lua_state, index) {
+
+		// TODO: Check types before get values.
+
+		lua.getfield(_lua_state, index, "window_title")
+		init_settings.window_title = lua.tostring(_lua_state, -1)
+
+		lua.getfield(_lua_state, index, "window_width")
+		init_settings.window_width = i32(lua.tonumber(_lua_state, -1))
+
+		lua.getfield(_lua_state, index, "window_height")
+		init_settings.window_height = i32(lua.tonumber(_lua_state, -1))
+
+		lua.pop(_lua_state, 3)
+	}
+
+	assert_stack()
+
+	return init_settings
+}
+
+get_data :: #force_inline proc(field: ^FieldRef) -> Type {
+	return Type(lua.rawgeti(_lua_state, lua.REGISTRYINDEX, lua.Integer(field.id)))
+}
+
+pop_data :: #force_inline proc(count: i32) {
+	lua.pop(_lua_state, Int(count))
+}
+
 @(private)
-push_number_f64 :: proc(number: f64) {
+push_number_f64 :: #force_inline proc(number: f64) {
 	lua.pushnumber(_lua_state, Number(number))
 }
 
 @(private)
-push_number_f32 :: proc(number: f32) {
+push_number_f32 :: #force_inline proc(number: f32) {
 	lua.pushnumber(_lua_state, Number(number))
 }
 
@@ -256,7 +307,7 @@ lua_allocator :: proc "c" (ud: rawptr, ptr: rawptr, osize, nsize: c.size_t) -> (
 
 @(private)
 @(disabled = !ODIN_DEBUG)
-check_stack :: proc() {
+check_stack :: #force_inline proc() {
 	_lua_stack = lua.gettop(_lua_state)
 }
 

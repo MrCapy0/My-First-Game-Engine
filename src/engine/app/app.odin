@@ -2,6 +2,12 @@ package app
 
 import "vendor:raylib"
 
+InitSettings :: struct {
+	window_title:  cstring,
+	window_width:  i32,
+	window_height: i32,
+}
+
 @(private)
 camera_3d: raylib.Camera3D = raylib.Camera3D {
 	fovy       = 60,

@@ -10,8 +10,25 @@ run :: proc() {
 
 	scripting.init()
 
+	init_settings_field_ref: scripting.FieldRef
 	start_func_ref: scripting.FieldRef
 	update_func_ref: scripting.FieldRef
+
+	init_settings_status := scripting.get_field("Game", "init_settings", &init_settings_field_ref)
+
+	#partial switch init_settings_status {
+	case .FIELD_DOES_NOT_EXIST:
+		console.warning("'Game.init_settings' does not found on main.lua")
+		break
+	}
+
+	if init_settings_field_ref.type != .TABLE {
+		console.warning("'Game.init_settings' on main.lua is not a table.")
+	}
+
+	scripting.get_data(&init_settings_field_ref)
+	init_settings := scripting.to_init_settings(1)
+	scripting.pop_data(1)
 
 	start_func_status := scripting.get_field("Game", "Start", &start_func_ref)
 	update_func_status := scripting.get_field("Game", "Update", &update_func_ref)
@@ -25,7 +42,12 @@ run :: proc() {
 		break
 	}
 
-	raylib.InitWindow(800, 600, "Hello, world")
+	raylib.InitWindow(
+		init_settings.window_width,
+		init_settings.window_height,
+		init_settings.window_title,
+	)
+
 	raylib.SetTargetFPS(60)
 
 	scripting.run_func(&start_func_ref)
