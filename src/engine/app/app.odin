@@ -3,9 +3,13 @@ package app
 import "vendor:raylib"
 
 InitSettings :: struct {
-	window_title:  cstring,
-	window_width:  i32,
-	window_height: i32,
+	window_title:           cstring,
+	window_width:           i32,
+	window_height:          i32,
+	window_allow_resize:    bool,
+	window_use_vsync:       bool,
+	window_use_full_screen: bool,
+	window_use_msaa_4x:     bool,
 }
 
 @(private)

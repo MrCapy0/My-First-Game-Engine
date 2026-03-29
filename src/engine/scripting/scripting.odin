@@ -253,7 +253,16 @@ to_init_settings :: proc(index: Int) -> app.InitSettings {
 		lua.getfield(_lua_state, index, "window_height")
 		init_settings.window_height = i32(lua.tonumber(_lua_state, -1))
 
-		lua.pop(_lua_state, 3)
+		lua.getfield(_lua_state, index, "window_allow_resize")
+		init_settings.window_allow_resize = bool(lua.toboolean(_lua_state, -1))
+
+		lua.getfield(_lua_state, index, "window_use_msaa_4x")
+		init_settings.window_use_msaa_4x = bool(lua.toboolean(_lua_state, -1))
+
+		lua.getfield(_lua_state, index, "window_use_vsync")
+		init_settings.window_use_vsync = bool(lua.toboolean(_lua_state, -1))
+
+		lua.pop(_lua_state, 6)
 	}
 
 	assert_stack()

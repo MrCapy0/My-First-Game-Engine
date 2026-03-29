@@ -1,10 +1,11 @@
 package engine
 
-import "scripting"
+import "core:fmt"
 import "vendor:raylib"
 
 import "app"
 import "console"
+import "scripting"
 
 run :: proc() {
 
@@ -42,6 +43,25 @@ run :: proc() {
 		break
 	}
 
+	window_flags: raylib.ConfigFlags = {.WINDOW_HIGHDPI}
+
+	if init_settings.window_allow_resize {
+		window_flags += {.WINDOW_RESIZABLE}
+	}
+
+	if init_settings.window_use_full_screen {
+		window_flags += {.FULLSCREEN_MODE}
+	}
+
+	if init_settings.window_use_msaa_4x {
+		window_flags += {.MSAA_4X_HINT}
+	}
+
+	if init_settings.window_use_vsync {
+		window_flags += {.VSYNC_HINT}
+	}
+
+	raylib.SetConfigFlags(window_flags)
 	raylib.InitWindow(
 		init_settings.window_width,
 		init_settings.window_height,
@@ -53,7 +73,7 @@ run :: proc() {
 	scripting.run_func(&start_func_ref)
 
 	for {
-		if (raylib.WindowShouldClose()) {
+		if raylib.WindowShouldClose() {
 			break
 		}
 

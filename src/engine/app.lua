@@ -4,21 +4,27 @@ App = {}
 ---@field window_title string
 ---@field window_width integer
 ---@field window_height integer
+---@field window_allow_resize boolean
+---@field window_use_vsync boolean
+---@field window_use_msaa_4x boolean
 InitSettings = {
     window_title = "Game",
     window_width = 800,
     window_height = 600,
+    window_allow_resize = true,
+    window_use_vsync = true,
+    window_use_msaa_4x = true
 }
 
----@param title string
----@param window_width integer
----@param window_height integer
 ---@return InitSettings
-function InitSettings:new(title, window_width, window_height)
+function InitSettings:new()
     return {
-        window_title = title,
-        window_width = window_width,
-        window_height = window_height
+        window_title = "Game",
+        window_width = 800,
+        window_height = 600,
+        window_allow_resize = true,
+        window_use_vsync = true,
+        window_use_msaa_4x = true
     }
 end
 
