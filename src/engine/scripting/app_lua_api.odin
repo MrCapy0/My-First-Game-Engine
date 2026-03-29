@@ -13,7 +13,18 @@ lua_set_camera_3d :: proc "c" (lua: Lua) -> Int {
 }
 
 @(private)
+lua_get_delta :: proc "c" (lua: Lua) -> Int {
+	context = get_context()
+	dt := app.get_delta()
+	push_number(dt)
+	return 1
+}
+
+@(private)
 app_table := Table {
 	name      = "__App",
-	functions = []Func{Func{name = "_set_camera_3d", function = lua_set_camera_3d}},
+	functions = []Func {
+		Func{name = "_set_camera_3d", function = lua_set_camera_3d},
+		Func{name = "_get_delta", function = lua_get_delta},
+	},
 }

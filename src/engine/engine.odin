@@ -35,7 +35,8 @@ run :: proc() {
 			break
 		}
 
-		scripting.run_func(&update_func_ref)
+		delta := app.get_delta()
+		scripting.run_func(&update_func_ref, "Game", delta)
 
 		raylib.BeginDrawing()
 		raylib.BeginMode3D(app.get_camera_3d())

@@ -4,6 +4,7 @@ import "../console"
 import runtime "base:runtime"
 import c "core:c"
 import fmt "core:fmt"
+import "core:strings"
 import lua "vendor:lua/5.4"
 import "vendor:raylib"
 
@@ -12,6 +13,7 @@ Type :: lua.Type
 Function :: lua.CFunction
 Context :: runtime.Context
 Int :: c.int
+Number :: lua.Number
 
 Status :: enum {
 	OK,
@@ -34,7 +36,6 @@ FieldRef :: struct {
 	id:   Int,
 	type: Type,
 }
-
 
 @(private)
 _lua_state: ^lua.State
@@ -119,7 +120,7 @@ get_field :: proc(table: cstring, field: cstring, result: ^FieldRef) -> Status {
 	return status
 }
 
-run_func :: proc(func: ^FieldRef) {
+run_func :: proc(func: ^FieldRef, table_name: cstring = nil, args: ..any) {
 
 	if func.type == Type.NIL {
 		return
@@ -132,8 +133,48 @@ run_func :: proc(func: ^FieldRef) {
 	}
 
 	if func.type == .FUNCTION {
-		if lua.pcall(_lua_state, 0, 0, 0) != 0 {
-			console.error(to_string(-1))
+
+		nargs := i32(len(args))
+
+		// Insert 'self' arg.
+		if table_name != nil {
+			// The first argument is 'self' passed by lua.
+			if Type(lua.getglobal(_lua_state, table_name)) == .TABLE {
+				nargs += 1
+			} else {
+				// Table not found.
+				lua.pop(_lua_state, 1)
+				console.warning_fmt(
+					"Tried use %s as self but the table was not found.",
+					table_name,
+				)
+			}
+		}
+
+		// push parameters.
+		for arg in args {
+			switch v in arg {
+			case f32:
+				lua.pushnumber(_lua_state, lua.Number(v))
+			case f64:
+				lua.pushnumber(_lua_state, lua.Number(v))
+			case i32:
+				lua.pushinteger(_lua_state, lua.Integer(v))
+			case int:
+				lua.pushinteger(_lua_state, lua.Integer(v))
+			case string:
+				lua.pushstring(_lua_state, strings.clone_to_cstring(v, context.temp_allocator))
+			case bool:
+				lua.pushboolean(_lua_state, b32(v))
+			case:
+				panic("invalid parameter type")
+			}
+		}
+
+		if lua.pcall(_lua_state, nargs, 0, 0) != 0 {
+			
+			error := to_cstring(-1)
+			console.error(string(error))
 			lua.pop(_lua_state, 1)
 		}
 	}
@@ -155,7 +196,7 @@ to_f32 :: #force_inline proc(index: Int) -> f32 {
 	return number
 }
 
-to_string :: proc(index: Int) -> cstring {
+to_cstring :: proc(index: Int) -> cstring {
 	str := lua.tostring(_lua_state, index)
 	return str
 }
@@ -175,6 +216,22 @@ to_vec3 :: proc(index: Int) -> raylib.Vector3 {
 	defer assert_stack()
 
 	return v
+}
+
+@(private)
+push_number_f64 :: proc(number: f64) {
+	lua.pushnumber(_lua_state, Number(number))
+}
+
+@(private)
+push_number_f32 :: proc(number: f32) {
+	lua.pushnumber(_lua_state, Number(number))
+}
+
+@(private)
+push_number :: proc {
+	push_number_f32,
+	push_number_f64,
 }
 
 @(private)

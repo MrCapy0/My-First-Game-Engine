@@ -6,8 +6,8 @@ import "../console"
 lua_log :: proc "c" (state: Lua) -> Int {
 
 	context = get_context()
-	str := to_string(1)
-	console.log(str)
+	str := to_cstring(1)
+	console.log(string(str))
 
 	return 0
 }

@@ -19,3 +19,7 @@ set_camera_3d :: #force_inline proc(position: raylib.Vector3, direction: raylib.
 get_camera_3d :: #force_inline proc() -> raylib.Camera3D {
 	return camera_3d
 }
+
+get_delta :: #force_inline proc() -> f32 {
+	return raylib.GetFrameTime()
+}
