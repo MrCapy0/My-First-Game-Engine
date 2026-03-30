@@ -221,9 +221,9 @@ to_vec3 :: proc(index: Int) -> raylib.Vector3 {
 	check_stack()
 
 	if lua.istable(_lua_state, index) {
-		lua.rawgeti(_lua_state, index, 1); v.x = f32(lua.tonumber(_lua_state, -1))
-		lua.rawgeti(_lua_state, index, 2); v.y = f32(lua.tonumber(_lua_state, -1))
-		lua.rawgeti(_lua_state, index, 3); v.z = f32(lua.tonumber(_lua_state, -1))
+		lua.getfield(_lua_state, index, "x"); v.x = f32(lua.tonumber(_lua_state, -1))
+		lua.getfield(_lua_state, index, "y"); v.y = f32(lua.tonumber(_lua_state, -1))
+		lua.getfield(_lua_state, index, "z"); v.z = f32(lua.tonumber(_lua_state, -1))
 		lua.pop(_lua_state, 3)
 	}
 

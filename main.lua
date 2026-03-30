@@ -1,6 +1,7 @@
 require("src.engine.app")
 require("src.engine.console")
 require("src.engine.inputs_keyboard")
+require("src.engine.math.vec")
 
 Game = {}
 local init_settings = InitSettings:new()
@@ -13,16 +14,17 @@ init_settings.window_use_vsync = true
 
 Game.init_settings = init_settings
 
+local player_pos = V3.new(0, 2, 0)
+
 function Game:Start()
-    Console.log("hello, world")
+    Console.log(V3.normalize(V3.new(1, 1, 1)))
+
+    Console.log(V3.new(0, 2, 0) == V3.new(0, 2, 0))
+    Console.log(V3.new(0, 2, 1) == V3.new(0, 2, 0))
 end
 
 function Game:Update(dt)
-    App.set_camera_3d({ 5, 1, -5 }, { 1, 0, 1 })
-    Console.log(Keyboard.was_pressed("space"))
-    --print(Keyboard.was_pressed("space"))
-
-    if Keyboard.was_pressed("space") then
-
-    end
+    local move_speed = dt * 10
+    player_pos = player_pos - V3.new(0, 0, move_speed)
+    App.set_camera_3d(player_pos, V3.new(0, 0, 1))
 end
