@@ -57,6 +57,7 @@ init :: proc() {
 	add_table(table_console)
 	add_table(table_app)
 	add_table(table_inputs_keyboard)
+	add_table(table_gizmos)
 
 	status := lua.Status(lua.L_dofile(_lua_state, "main.lua"))
 	if status != .OK {
@@ -230,6 +231,26 @@ to_vec3 :: proc(index: Int) -> raylib.Vector3 {
 	defer assert_stack()
 
 	return v
+}
+
+to_color :: proc(index: Int) -> raylib.Color {
+
+	// TODO: Check parameter type.
+
+	c: raylib.Color = {0, 0, 0, 1}
+	check_stack()
+
+	if lua.istable(_lua_state, index) {
+		lua.getfield(_lua_state, index, "r"); c.r = u8(lua.tonumber(_lua_state, -1))
+		lua.getfield(_lua_state, index, "g"); c.g = u8(lua.tonumber(_lua_state, -1))
+		lua.getfield(_lua_state, index, "b"); c.b = u8(lua.tonumber(_lua_state, -1))
+		lua.getfield(_lua_state, index, "a"); c.a = u8(lua.tonumber(_lua_state, -1))
+		lua.pop(_lua_state, 4)
+	}
+
+	defer assert_stack()
+
+	return c
 }
 
 to_init_settings :: proc(index: Int) -> app.InitSettings {

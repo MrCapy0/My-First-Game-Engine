@@ -18,5 +18,5 @@ lua_inputs_keyboard_was_pressed :: proc "c" (state: Lua) -> Int {
 @(private)
 table_inputs_keyboard := Table {
 	name      = "__InputsKeyboard",
-	functions = {Func{name = "was_pressed", function = lua_inputs_keyboard_was_pressed}},
+	functions = {Func{name = "_was_pressed", function = lua_inputs_keyboard_was_pressed}},
 }

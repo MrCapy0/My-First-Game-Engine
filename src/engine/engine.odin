@@ -7,6 +7,8 @@ import "app"
 import "console"
 import "scripting"
 
+import "gizmos"
+
 run :: proc() {
 
 	scripting.init()
@@ -70,6 +72,8 @@ run :: proc() {
 
 	raylib.SetTargetFPS(60)
 
+	gizmos.init()
+
 	scripting.run_func(&start_func_ref)
 
 	for {
@@ -85,10 +89,13 @@ run :: proc() {
 		raylib.ClearBackground(raylib.RAYWHITE)
 
 		raylib.DrawGrid(50, 1)
+		gizmos.draw()
 
 		raylib.EndMode3D()
 		raylib.EndDrawing()
 	}
+
+	gizmos.end()
 
 	raylib.CloseWindow()
 }

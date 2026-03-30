@@ -75,7 +75,7 @@ Keyboard = {
 ---@param key Keyboard.Keys
 function Keyboard.was_pressed(key)
     ---@diagnostic disable-next-line: undefined-global
-    return __InputsKeyboard.was_pressed(key)
+    return __InputsKeyboard._was_pressed(key)
 end
 
 return Keyboard
