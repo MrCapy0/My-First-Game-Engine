@@ -73,9 +73,15 @@ Keyboard = {
 }
 
 ---@param key Keyboard.Keys
-function Keyboard.was_pressed(key)
+function Keyboard.is_started(key)
     ---@diagnostic disable-next-line: undefined-global
-    return __InputsKeyboard._was_pressed(key)
+    return __InputsKeyboard._is_started(key)
+end
+
+---@param key Keyboard.Keys
+function Keyboard.is_pressed(key)
+    ---@diagnostic disable-next-line: undefined-global
+    return __InputsKeyboard._is_pressed(key)
 end
 
 return Keyboard

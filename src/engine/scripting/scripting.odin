@@ -192,6 +192,17 @@ get_context :: #force_inline proc() -> runtime.Context {
 	return _context
 }
 
+to_bool :: #force_inline proc(index: Int) -> bool {
+
+	// TODO: Check parameter type.
+
+	check_stack()
+	v := bool(lua.toboolean(_lua_state, index))
+	assert_stack()
+
+	return v
+}
+
 to_f32 :: #force_inline proc(index: Int) -> f32 {
 
 	// TODO: Check parameter type.
@@ -284,7 +295,10 @@ to_init_settings :: proc(index: Int) -> app.InitSettings {
 		lua.getfield(_lua_state, index, "window_use_vsync")
 		init_settings.window_use_vsync = bool(lua.toboolean(_lua_state, -1))
 
-		lua.pop(_lua_state, 6)
+		lua.getfield(_lua_state, index, "window_use_full_screen")
+		init_settings.window_use_full_screen = bool(lua.toboolean(_lua_state, -1))
+
+		lua.pop(_lua_state, 7)
 	}
 
 	assert_stack()

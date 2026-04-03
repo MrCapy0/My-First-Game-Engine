@@ -45,33 +45,7 @@ run :: proc() {
 		break
 	}
 
-	window_flags: raylib.ConfigFlags = {.WINDOW_HIGHDPI}
-
-	if init_settings.window_allow_resize {
-		window_flags += {.WINDOW_RESIZABLE}
-	}
-
-	if init_settings.window_use_full_screen {
-		window_flags += {.FULLSCREEN_MODE}
-	}
-
-	if init_settings.window_use_msaa_4x {
-		window_flags += {.MSAA_4X_HINT}
-	}
-
-	if init_settings.window_use_vsync {
-		window_flags += {.VSYNC_HINT}
-	}
-
-	raylib.SetConfigFlags(window_flags)
-	raylib.InitWindow(
-		init_settings.window_width,
-		init_settings.window_height,
-		init_settings.window_title,
-	)
-
-	raylib.SetTargetFPS(60)
-
+	app.init(init_settings)
 	gizmos.init()
 
 	scripting.run_func(&start_func_ref)
@@ -83,6 +57,8 @@ run :: proc() {
 
 		delta := app.get_delta()
 		scripting.run_func(&update_func_ref, "Game", delta)
+
+		app.update()
 
 		raylib.BeginDrawing()
 		raylib.BeginMode3D(app.get_camera_3d())

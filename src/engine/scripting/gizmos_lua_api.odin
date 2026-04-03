@@ -1,10 +1,9 @@
 package scripting
 
 import "../gizmos"
-import "core:fmt"
 import "vendor:raylib"
 
-@(private)
+@(private = "file")
 lua_gizmos_draw_wire_cube :: proc "c" (state: Lua) -> Int {
 
 	// TODO: check args.

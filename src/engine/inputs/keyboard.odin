@@ -145,6 +145,10 @@ to_keyboard_key :: proc(key_name: string) -> KeyboardKey {
 	}
 }
 
-is_key_down :: proc(key: KeyboardKey) -> bool {
+is_started :: proc(key: KeyboardKey) -> bool{
+	return raylib.IsKeyPressed(key)
+}
+
+is_pressed :: proc(key: KeyboardKey) -> bool {
 	return raylib.IsKeyDown(key)
 }

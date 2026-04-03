@@ -2,7 +2,7 @@ package scripting
 
 import "../console"
 
-@(private)
+@(private = "file")
 lua_log :: proc "c" (state: Lua) -> Int {
 
 	context = get_context()
