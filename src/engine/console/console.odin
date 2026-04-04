@@ -15,10 +15,16 @@ warning_fmt :: #force_inline proc(str: string, args: ..any) {
 	fmt.print("WARNING: ")
 	fmt.printfln(str, ..args)
 }
+
 warning :: #force_inline proc(str: string) {
 	fmt.println("WARNING: ", str)
 }
 
 error :: #force_inline proc(str: string) {
 	fmt.println("ERROR: ", str)
+}
+
+error_fmt :: #force_inline proc(str: string, args: ..any) {
+	fmt.print("ERROR: ")
+	fmt.printfln(str, ..args)
 }

@@ -17,7 +17,7 @@ init_settings.window_use_full_screen = false
 
 Game.init_settings = init_settings
 
-local player_pos = V3.new(0, 2, -10)
+local player_pos = V3.new(0, 5, -50)
 local t = 0
 
 function Game:Start()
