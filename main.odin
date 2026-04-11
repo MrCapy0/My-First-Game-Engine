@@ -92,40 +92,6 @@ main :: proc() {
 	glfw.SetCursorPosCallback(window, cursor_position_callback)
 	glfw.SetFramebufferSizeCallback(window, framebuffer_size_callback)
 
-	// Load texture
-
-	img, error := png.load("assets/materials/Brick Wall 1_3.png")
-	if error != image.General_Image_Error.None {
-		fmt.printfln("Load texture error %v", error)
-	}
-	defer image.destroy(img)
-
-	fmt.printfln("%d", img.width)
-
-	texture: u32
-
-	gl.GenTextures(1, &texture)
-	fmt.printfln("%d", texture)
-	gl.BindTexture(gl.TEXTURE_2D, texture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexImage2D(
-		gl.TEXTURE_2D,
-		0,
-		gl.RGBA,
-		i32(img.width),
-		i32(img.height),
-		0,
-		gl.RGBA,
-		gl.UNSIGNED_BYTE,
-		raw_data(img.pixels.buf),
-	)
-	gl.GenerateMipmap(gl.TEXTURE_2D)
-
-	gl.BindTexture(gl.TEXTURE_2D, 0)
-
 	// Create mesh
 	vbo: u32
 	vao: u32
@@ -164,7 +130,8 @@ main :: proc() {
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0)
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 
-	s := render.new_shader("./my_shader.vert", "./my_shader.frag")
+	s := render.load_shader("./my_shader.vert", "./my_shader.frag")
+	t := render.load_texture("./assets/materials/Ceramic Floor_1.png")
 
 	// Wire Mode
 	//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
@@ -176,7 +143,7 @@ main :: proc() {
 		render.draw(s)
 
 		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, texture)
+		gl.BindTexture(gl.TEXTURE_2D, render.loaded_textures[t.id].texture)
 
 		gl.BindVertexArray(vao)
 		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)

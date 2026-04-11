@@ -1,4 +1,4 @@
-package shader
+package render
 
 import "core:log"
 import os "core:os"
@@ -16,7 +16,7 @@ ShaderInternal :: struct {
 
 loaded_shaders: [dynamic]ShaderInternal
 
-new_shader :: proc(v_path: string, f_path: string) -> Shader {
+load_shader :: proc(v_path: string, f_path: string) -> Shader {
 
 	allocator := context.allocator
 	v_code, v_code_ok := os.read_entire_file(v_path, allocator)
