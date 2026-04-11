@@ -1,10 +1,14 @@
 package main
 
-import "base:runtime"
-import "core:c"
-import "core:fmt"
+import runtime "base:runtime"
+import c "core:c"
+import fmt "core:fmt"
+import image "core:image"
+import png "core:image/png"
 import gl "vendor:OpenGL"
-import "vendor:glfw"
+import glfw "vendor:glfw"
+
+import "src/engine/render"
 
 GL_MAJOR_VERSION :: 4
 GL_MINOR_VERSION :: 1
@@ -14,30 +18,43 @@ default_context: runtime.Context
 
 should_exit := false
 
-vertices := []f32{0.5, 0.5, 0.0, 0.5, -0.5, 0.0, -0.5, -0.5, 0.0, -0.5, 0.5, 0.0}
+vertices := []f32 {
+	0.5,
+	0.5,
+	0.0,
+	1.0,
+	0.0,
+	0.0,
+	1.0,
+	1.0, // top right
+	0.5,
+	-0.5,
+	0.0,
+	0.0,
+	1.0,
+	0.0,
+	1.0,
+	0.0, // bottom right
+	-0.5,
+	-0.5,
+	0.0,
+	0.0,
+	0.0,
+	1.0,
+	0.0,
+	0.0, // bottom left
+	-0.5,
+	0.5,
+	0.0,
+	1.0,
+	1.0,
+	0.0,
+	0.0,
+	1.0, // top left
+}
 indices := []u32{0, 1, 3, 1, 2, 3}
 
 main :: proc() {
-
-	vert_shader_code: cstring = `
-	#version 410 core
-
-	layout (location = 0) in vec3 aPos;
-
-	void main()
-	{
-		gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-	}
-	`
-	frag_shader_code: cstring = `
-	#version 330 core
-	out vec4 FragColor;
-
-	void main()
-	{
-		FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
-	} 
-	`
 
 	default_context = context
 
@@ -75,62 +92,39 @@ main :: proc() {
 	glfw.SetCursorPosCallback(window, cursor_position_callback)
 	glfw.SetFramebufferSizeCallback(window, framebuffer_size_callback)
 
-	// Rendering
+	// Load texture
 
-	// Shader
-	v_shader: u32 = gl.CreateShader(gl.VERTEX_SHADER)
-	f_shader: u32 = gl.CreateShader(gl.FRAGMENT_SHADER)
-
-	gl.ShaderSource(v_shader, 1, &vert_shader_code, nil)
-	gl.ShaderSource(f_shader, 1, &frag_shader_code, nil)
-
-	gl.CompileShader(v_shader)
-	gl.CompileShader(f_shader)
-
-	compile_success: i32
-	gl.GetShaderiv(v_shader, gl.COMPILE_STATUS, &compile_success)
-	if compile_success == 0 {
-
-		log: [1024]u8
-		error_len: i32
-		gl.GetShaderInfoLog(v_shader, 512, &error_len, &log[0])
-		fmt.printfln("Compile vertex shader error:")
-
-		msg := string(log[:error_len])
-		fmt.printfln("%s", msg)
+	img, error := png.load("assets/materials/Brick Wall 1_3.png")
+	if error != image.General_Image_Error.None {
+		fmt.printfln("Load texture error %v", error)
 	}
+	defer image.destroy(img)
 
-	gl.GetShaderiv(f_shader, gl.COMPILE_STATUS, &compile_success)
-	if compile_success == 0 {
+	fmt.printfln("%d", img.width)
 
-		log: [1024]u8
-		error_len: i32
-		gl.GetShaderInfoLog(f_shader, 512, &error_len, &log[0])
-		fmt.printfln("Compile fragment shader error:")
+	texture: u32
 
-		msg := string(log[:error_len])
-		fmt.printfln("%s", msg)
-	}
+	gl.GenTextures(1, &texture)
+	fmt.printfln("%d", texture)
+	gl.BindTexture(gl.TEXTURE_2D, texture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.RGBA,
+		i32(img.width),
+		i32(img.height),
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		raw_data(img.pixels.buf),
+	)
+	gl.GenerateMipmap(gl.TEXTURE_2D)
 
-	s_program := gl.CreateProgram()
-	gl.AttachShader(s_program, v_shader)
-	gl.AttachShader(s_program, f_shader)
-	gl.LinkProgram(s_program)
-
-	gl.GetProgramiv(s_program, gl.LINK_STATUS, &compile_success)
-	if compile_success == 0 {
-
-		log: [1024]u8
-		error_len: i32
-		gl.GetProgramInfoLog(f_shader, 512, &error_len, &log[0])
-		fmt.printfln("Link shader error:")
-
-		msg := string(log[:error_len])
-		fmt.printfln("%s", msg)
-	}
-
-	gl.DeleteShader(f_shader)
-	gl.DeleteShader(v_shader)
+	gl.BindTexture(gl.TEXTURE_2D, 0)
 
 	// Create mesh
 	vbo: u32
@@ -156,22 +150,34 @@ main :: proc() {
 		gl.STATIC_DRAW,
 	)
 
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), 0)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 0)
 	gl.EnableVertexAttribArray(0)
+
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 3 * size_of(f32))
+	gl.EnableVertexAttribArray(1)
+
+	gl.VertexAttribPointer(2, 2, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 6 * size_of(f32))
+	gl.EnableVertexAttribArray(2)
 
 	// Unbinding
 	gl.BindVertexArray(0)
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0)
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 
+	s := render.new_shader("./my_shader.vert", "./my_shader.frag")
+
 	// Wire Mode
-	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
-	
+	//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+
 	for !glfw.WindowShouldClose(window) && !should_exit {
 		gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 		gl.Clear(gl.COLOR_BUFFER_BIT) // clear with the color set above
 
-		gl.UseProgram(s_program)
+		render.draw(s)
+
+		gl.ActiveTexture(gl.TEXTURE0)
+		gl.BindTexture(gl.TEXTURE_2D, texture)
+
 		gl.BindVertexArray(vao)
 		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 
@@ -183,7 +189,8 @@ main :: proc() {
 	gl.DeleteBuffers(1, &ebo)
 	gl.DeleteBuffers(1, &vbo)
 	gl.DeleteVertexArrays(1, &vao)
-	gl.DeleteProgram(s_program)
+
+	render.end()
 
 	glfw.Terminate()
 }
