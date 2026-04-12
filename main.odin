@@ -3,8 +3,8 @@ package main
 import runtime "base:runtime"
 import c "core:c"
 import fmt "core:fmt"
-import image "core:image"
-import png "core:image/png"
+import "core:math/linalg"
+import "core:math/rand"
 import gl "vendor:OpenGL"
 import glfw "vendor:glfw"
 
@@ -54,6 +54,10 @@ vertices := []f32 {
 }
 indices := []u32{0, 1, 3, 1, 2, 3}
 
+draw_id: u64
+s: render.Shader
+vao: u32
+
 main :: proc() {
 
 	default_context = context
@@ -94,7 +98,6 @@ main :: proc() {
 
 	// Create mesh
 	vbo: u32
-	vao: u32
 	ebo: u32
 
 	gl.GenVertexArrays(1, &vao)
@@ -130,23 +133,27 @@ main :: proc() {
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0)
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 
-	s := render.load_shader("./my_shader.vert", "./my_shader.frag")
+	s = render.load_shader("./my_shader.vert", "./my_shader.frag")
 	t := render.load_texture("./assets/materials/Ceramic Floor_1.png")
 
 	// Wire Mode
 	//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
+	//m := linalg.identity(linalg.Matrix4x4f32)
+
+	draw_id = render.add_draw(s, vao, {})
+
 	for !glfw.WindowShouldClose(window) && !should_exit {
+
+		mrz := linalg.matrix4_rotate_f32(linalg.DEG_PER_RAD * 30, {0, 0, 1})
+
 		gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 		gl.Clear(gl.COLOR_BUFFER_BIT) // clear with the color set above
-
-		render.draw(s)
 
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, render.loaded_textures[t.id].texture)
 
-		gl.BindVertexArray(vao)
-		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+		render.update()
 
 		glfw.SwapBuffers(window)
 		glfw.PollEvents()
@@ -163,8 +170,31 @@ main :: proc() {
 }
 
 key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: i32) {
+
+	context = default_context
+
 	if key == glfw.KEY_ESCAPE && action == glfw.PRESS {
 		should_exit = true
+	}
+
+	if key == glfw.KEY_SPACE && action == glfw.PRESS {
+		//render.remove_draw(s, vao, draw_id)
+	}
+
+	if key == glfw.KEY_SPACE && action == glfw.PRESS {
+
+		random_v := rand.float32()
+		uniform_loc := render.get_uniform_location(s, "mult")
+		render.update_draw(
+			s,
+			vao,
+			draw_id,
+			render.DrawSettings {
+				shader_params = {
+					render.ShaderParamFloat{location = uniform_loc, value = random_v},
+				},
+			},
+		)
 	}
 }
 
@@ -182,7 +212,7 @@ framebuffer_size_callback :: proc "c" (window: glfw.WindowHandle, width, height:
 }
 
 get_window_size :: proc() -> [2]i32 {
-
+	
 	x, y := glfw.GetWindowSize(window)
 	return [2]i32{x, y}
 }
