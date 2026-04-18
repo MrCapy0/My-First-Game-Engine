@@ -27,14 +27,14 @@ load_texture :: proc(path: string) -> Texture {
 
 	if !os.exists(path) {
 
-		console.error_fmt("Image file does not exist on %s!", path)
+		console.error("Image file does not exist on %s!", path)
 		return {}
 	}
 
 	img, error := png.load(path)
 	if error != image.General_Image_Error.None {
 
-		console.error_fmt("Can't read image file on %s", path)
+		console.error("Can't read image file on %s", path)
 		return {}
 	}
 
@@ -73,6 +73,6 @@ load_texture :: proc(path: string) -> Texture {
 	}
 
 	loaded_textures[new_texture.id] = new_texture_internal
-    
+
 	return new_texture
 }

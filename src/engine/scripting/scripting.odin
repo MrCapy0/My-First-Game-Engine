@@ -152,10 +152,7 @@ run_func :: proc(func: ^FieldRef, table_name: cstring = nil, args: ..any) {
 			} else {
 				// Table not found.
 				lua.pop(_lua_state, 1)
-				console.warning_fmt(
-					"Tried use %s as self but the table was not found.",
-					table_name,
-				)
+				console.warning("Tried use %s as self but the table was not found.", table_name)
 			}
 		}
 

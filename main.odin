@@ -86,6 +86,8 @@ main :: proc() {
 
 	glfw.MakeContextCurrent(window)
 
+	render.init()
+
 	// Enable vsync
 	glfw.SwapInterval(1)
 
@@ -141,7 +143,18 @@ main :: proc() {
 
 	//m := linalg.identity(linalg.Matrix4x4f32)
 
-	draw_id = render.add_draw(s, vao, {})
+	draw_id = render.add_draw(
+		s,
+		vao,
+		{
+			parameters = {
+				render.ShaderParamFloat {
+					location = render.get_uniform_location(s, "mult"),
+					value = rand.float32(),
+				},
+			},
+		},
+	)
 
 	for !glfw.WindowShouldClose(window) && !should_exit {
 
@@ -178,23 +191,25 @@ key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods
 	}
 
 	if key == glfw.KEY_SPACE && action == glfw.PRESS {
-		//render.remove_draw(s, vao, draw_id)
+		render.remove_draw(s, vao, draw_id)
+	}
+
+	if key == glfw.KEY_ENTER && action == glfw.PRESS {
+		render.update_draw(
+			s,
+			vao,
+			draw_id,
+			render.ShaderParamFloat {
+				location = render.get_uniform_location(s, "mult"),
+				value = rand.float32(),
+			},
+		)
 	}
 
 	if key == glfw.KEY_SPACE && action == glfw.PRESS {
 
 		random_v := rand.float32()
 		uniform_loc := render.get_uniform_location(s, "mult")
-		render.update_draw(
-			s,
-			vao,
-			draw_id,
-			render.DrawSettings {
-				shader_params = {
-					render.ShaderParamFloat{location = uniform_loc, value = random_v},
-				},
-			},
-		)
 	}
 }
 
@@ -212,7 +227,7 @@ framebuffer_size_callback :: proc "c" (window: glfw.WindowHandle, width, height:
 }
 
 get_window_size :: proc() -> [2]i32 {
-	
+
 	x, y := glfw.GetWindowSize(window)
 	return [2]i32{x, y}
 }
