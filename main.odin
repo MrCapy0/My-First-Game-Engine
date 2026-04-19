@@ -8,6 +8,7 @@ import "core:math/rand"
 import gl "vendor:OpenGL"
 import glfw "vendor:glfw"
 
+import "src/engine/model"
 import "src/engine/render"
 
 GL_MAJOR_VERSION :: 4
@@ -56,7 +57,8 @@ indices := []u32{0, 1, 3, 1, 2, 3}
 
 draw_id: u64
 s: render.Shader
-vao: u32
+
+plane: model.Mesh
 
 main :: proc() {
 
@@ -98,43 +100,6 @@ main :: proc() {
 	glfw.SetCursorPosCallback(window, cursor_position_callback)
 	glfw.SetFramebufferSizeCallback(window, framebuffer_size_callback)
 
-	// Create mesh
-	vbo: u32
-	ebo: u32
-
-	gl.GenVertexArrays(1, &vao)
-	gl.BindVertexArray(vao)
-	gl.GenBuffers(1, &vbo)
-	gl.GenBuffers(1, &ebo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
-	gl.BufferData(
-		gl.ARRAY_BUFFER,
-		len(vertices) * size_of(f32),
-		raw_data(vertices),
-		gl.STATIC_DRAW,
-	)
-	gl.BufferData(
-		gl.ELEMENT_ARRAY_BUFFER,
-		len(indices) * size_of(u32),
-		raw_data(indices),
-		gl.STATIC_DRAW,
-	)
-
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 0)
-	gl.EnableVertexAttribArray(0)
-
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 3 * size_of(f32))
-	gl.EnableVertexAttribArray(1)
-
-	gl.VertexAttribPointer(2, 2, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 6 * size_of(f32))
-	gl.EnableVertexAttribArray(2)
-
-	// Unbinding
-	gl.BindVertexArray(0)
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0)
-	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-
 	s = render.load_shader("./my_shader.vert", "./my_shader.frag")
 	t := render.load_texture("./assets/materials/Ceramic Floor_1.png")
 
@@ -143,9 +108,48 @@ main :: proc() {
 
 	//m := linalg.identity(linalg.Matrix4x4f32)
 
+	cube := model.from_file("assets/models/Cube.glb")
+
+	plane.vertices = []f32 {
+		0.5,
+		0.5,
+		0.0,
+		1.0,
+		0.0,
+		0.0,
+		1.0,
+		1.0, // top right
+		0.5,
+		-0.5,
+		0.0,
+		0.0,
+		1.0,
+		0.0,
+		1.0,
+		0.0, // bottom right
+		-0.5,
+		-0.5,
+		0.0,
+		0.0,
+		0.0,
+		1.0,
+		0.0,
+		0.0, // bottom left
+		-0.5,
+		0.5,
+		0.0,
+		1.0,
+		1.0,
+		0.0,
+		0.0,
+		1.0, // top left
+	}
+	plane.indices = []u32{0, 1, 3, 1, 2, 3}
+	model.create_gpu_instance(&plane)
+
 	draw_id = render.add_draw(
 		s,
-		vao,
+		plane.vao,
 		{
 			parameters = {
 				render.ShaderParamFloat {
@@ -155,6 +159,7 @@ main :: proc() {
 			},
 		},
 	)
+
 
 	for !glfw.WindowShouldClose(window) && !should_exit {
 
@@ -172,11 +177,6 @@ main :: proc() {
 		glfw.PollEvents()
 	}
 
-	// Unload mesh
-	gl.DeleteBuffers(1, &ebo)
-	gl.DeleteBuffers(1, &vbo)
-	gl.DeleteVertexArrays(1, &vao)
-
 	render.end()
 
 	glfw.Terminate()
@@ -191,13 +191,13 @@ key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods
 	}
 
 	if key == glfw.KEY_SPACE && action == glfw.PRESS {
-		render.remove_draw(s, vao, draw_id)
+		render.remove_draw(s, plane.vao, draw_id)
 	}
 
 	if key == glfw.KEY_ENTER && action == glfw.PRESS {
 		render.update_draw(
 			s,
-			vao,
+			plane.vao,
 			draw_id,
 			render.ShaderParamFloat {
 				location = render.get_uniform_location(s, "mult"),
