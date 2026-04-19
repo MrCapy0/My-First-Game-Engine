@@ -250,9 +250,9 @@ update :: proc() {
 		}
 
 		// Apply parameters.
-		for param_raw in draw_call.apply_params_queue {
+		for &param_raw in draw_call.apply_params_queue {
 
-			switch param in param_raw {
+			switch param in &param_raw {
 			case ShaderParamFloat:
 				gl.Uniform1f(param.location, param.value)
 				break
@@ -263,6 +263,8 @@ update :: proc() {
 				gl.Uniform3f(param.location, x, y, z)
 				break
 			case ShaderParamM4:
+				m := param.value
+				gl.UniformMatrix4fv(param.location, 1, gl.FALSE, &m[0, 0])
 				break
 			case ShaderParamTexture2D:
 				break

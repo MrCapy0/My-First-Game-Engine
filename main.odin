@@ -3,6 +3,7 @@ package main
 import runtime "base:runtime"
 import c "core:c"
 import fmt "core:fmt"
+import "core:math"
 import "core:math/linalg"
 import "core:math/rand"
 import gl "vendor:OpenGL"
@@ -19,44 +20,9 @@ default_context: runtime.Context
 
 should_exit := false
 
-vertices := []f32 {
-	0.5,
-	0.5,
-	0.0,
-	1.0,
-	0.0,
-	0.0,
-	1.0,
-	1.0, // top right
-	0.5,
-	-0.5,
-	0.0,
-	0.0,
-	1.0,
-	0.0,
-	1.0,
-	0.0, // bottom right
-	-0.5,
-	-0.5,
-	0.0,
-	0.0,
-	0.0,
-	1.0,
-	0.0,
-	0.0, // bottom left
-	-0.5,
-	0.5,
-	0.0,
-	1.0,
-	1.0,
-	0.0,
-	0.0,
-	1.0, // top left
-}
-indices := []u32{0, 1, 3, 1, 2, 3}
-
 draw_id: u64
 s: render.Shader
+transform: linalg.Matrix4x4f32
 
 plane: model.Mesh
 
@@ -109,6 +75,7 @@ main :: proc() {
 	//m := linalg.identity(linalg.Matrix4x4f32)
 
 	cube := model.from_file("assets/models/Cube.glb")
+	transform = linalg.identity(linalg.Matrix4f32)
 
 	plane.vertices = []f32 {
 		0.5,
@@ -159,6 +126,10 @@ main :: proc() {
 				render.ShaderParamV3 {
 					location = render.get_uniform_location(s, "color"),
 					value = [3]f32{rand.float32(), rand.float32(), rand.float32()},
+				},
+				render.ShaderParamM4 {
+					location = render.get_uniform_location(s, "transform"),
+					value = transform,
 				},
 			},
 		},
@@ -216,6 +187,22 @@ key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods
 			render.ShaderParamV3 {
 				location = render.get_uniform_location(s, "color"),
 				value = [3]f32{rand.float32(), rand.float32(), rand.float32()},
+			},
+		)
+
+		x := math.remap(rand.float32(), 0, 1, -1, 1)
+		y := math.remap(rand.float32(), 0, 1, -1, 1)
+		z := math.remap(rand.float32(), 0, 1, -1, 1)
+		pos := [3]f32{x, y, z} * 0.1
+		transform = linalg.matrix4_translate(pos)
+
+		render.update_draw(
+			s,
+			plane.vao,
+			draw_id,
+			render.ShaderParamM4 {
+				location = render.get_uniform_location(s, "transform"),
+				value = transform,
 			},
 		)
 	}

@@ -8,6 +8,7 @@ in vec2 TexCoord;
 uniform sampler2D texture1;
 uniform float mult = 1;
 uniform vec3 color;
+
 void main()
 {
 	FragColor = texture(texture1, TexCoord);

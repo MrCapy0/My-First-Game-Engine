@@ -10,6 +10,6 @@
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Odin: Build Project",
             "terminal": "integrated"
-        }
+        },
     ]
 }
