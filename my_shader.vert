@@ -7,10 +7,14 @@ out vec3 ourColor;
 out vec2 TexCoord;
 
 uniform mat4 transform;
+uniform mat4 perspective;
+uniform mat4 view;
 
 void main()
 {
-	gl_Position = transform * vec4(aPos, 1.0);
+	mat4 mvp = perspective * view * transform;
+	//mvp = transform;
+	gl_Position = mvp * vec4(aPos, 1.0);
 	//gl_Position = vec4(aPos, 1.0);
 	ourColor = aColor;
 	TexCoord = vec2(aTexCoord.x, aTexCoord.y);

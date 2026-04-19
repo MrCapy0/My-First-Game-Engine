@@ -26,6 +26,9 @@ transform: linalg.Matrix4x4f32
 
 plane: model.Mesh
 
+perspective: linalg.Matrix4x4f32
+view_pos: linalg.Vector3f32
+
 main :: proc() {
 
 	default_context = context
@@ -75,7 +78,8 @@ main :: proc() {
 	//m := linalg.identity(linalg.Matrix4x4f32)
 
 	cube := model.from_file("assets/models/Cube.glb")
-	transform = linalg.identity(linalg.Matrix4f32)
+	transform = linalg.matrix4_translate_f32({0, 0, 0.9})
+	view_pos = {0, 0, 5}
 
 	plane.vertices = []f32 {
 		0.5,
@@ -135,7 +139,6 @@ main :: proc() {
 		},
 	)
 
-
 	for !glfw.WindowShouldClose(window) && !should_exit {
 
 		mrz := linalg.matrix4_rotate_f32(linalg.DEG_PER_RAD * 30, {0, 0, 1})
@@ -145,6 +148,36 @@ main :: proc() {
 
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, render.loaded_textures[t.id].texture)
+
+		window_size := get_window_size()
+		aspect := f32(window_size.x) / f32(window_size.y)
+		perspective = linalg.matrix4_perspective_f32(
+			70 * linalg.DEG_PER_RAD,
+			aspect,
+			0.05,
+			1000,
+			false,
+		)
+
+		fmt.printfln("%d", render.get_uniform_location(s, "perspective"))
+
+		render.update_draw(
+			s,
+			plane.vao,
+			draw_id,
+			render.ShaderParamM4 {
+				location = render.get_uniform_location(s, "perspective"),
+				value = perspective,
+			},
+		)
+
+		view := linalg.matrix4_translate_f32(view_pos)
+		render.update_draw(
+			s,
+			plane.vao,
+			draw_id,
+			render.ShaderParamM4{location = render.get_uniform_location(s, "view"), value = view},
+		)
 
 		render.update()
 
@@ -192,7 +225,7 @@ key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods
 
 		x := math.remap(rand.float32(), 0, 1, -1, 1)
 		y := math.remap(rand.float32(), 0, 1, -1, 1)
-		z := math.remap(rand.float32(), 0, 1, -1, 1)
+		z: f32 = -10.0
 		pos := [3]f32{x, y, z} * 0.1
 		transform = linalg.matrix4_translate(pos)
 
