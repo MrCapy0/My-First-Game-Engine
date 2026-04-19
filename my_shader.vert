@@ -7,15 +7,18 @@ out vec3 ourColor;
 out vec2 TexCoord;
 
 uniform mat4 transform;
-uniform mat4 perspective;
-uniform mat4 view;
+
+layout (std140) uniform CameraData {
+    mat4 perspective;
+    mat4 translation;
+	mat4 rotation;
+} camera;
 
 void main()
 {
-	mat4 mvp = perspective * view * transform;
-	//mvp = transform;
+	mat4 view = camera.rotation * camera.translation;
+	mat4 mvp = camera.perspective * view * transform;
 	gl_Position = mvp * vec4(aPos, 1.0);
-	//gl_Position = vec4(aPos, 1.0);
 	ourColor = aColor;
 	TexCoord = vec2(aTexCoord.x, aTexCoord.y);
 }

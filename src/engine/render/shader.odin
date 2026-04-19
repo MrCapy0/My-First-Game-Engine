@@ -62,9 +62,25 @@ DrawSettings :: struct {
 	parameters: []ShaderParam,
 }
 
+CAMERA_VIEW_CHANNEL :: 0
+
 loaded_shaders: [dynamic]ShaderInternal
 draw_queue: map[RenderQueueId]^DrawCall
 draw_requests: u64 = 0
+
+ubo_camera_view: u32
+
+init :: proc() {
+	draw_queue = make(map[RenderQueueId]^DrawCall)
+
+	// Create camera view buffer.
+	gl.GenBuffers(1, &ubo_camera_view)
+	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo_camera_view)
+	gl.BufferData(gl.UNIFORM_BUFFER, size_of(CameraData), nil, gl.DYNAMIC_DRAW)
+	gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
+
+	set_camera_view_full({0, 0, 0}, linalg.QUATERNIONF32_IDENTITY, 65, 0.1, 1000)
+}
 
 load_shader :: proc(v_path: string, f_path: string) -> Shader {
 
@@ -169,6 +185,10 @@ load_shader :: proc(v_path: string, f_path: string) -> Shader {
 		return {}
 	}
 
+	// Use camera view buffer.
+	camera_view_block_id := gl.GetUniformBlockIndex(program, "CameraData")
+	gl.UniformBlockBinding(program, camera_view_block_id, CAMERA_VIEW_CHANNEL)
+
 	new_shader: Shader = {
 		id = u32(len(loaded_shaders)),
 	}
@@ -228,10 +248,6 @@ load_shader :: proc(v_path: string, f_path: string) -> Shader {
 	append(&loaded_shaders, new_shader_internal)
 	free_all(context.temp_allocator)
 	return new_shader
-}
-
-init :: proc() {
-	draw_queue = make(map[RenderQueueId]^DrawCall)
 }
 
 update :: proc() {
@@ -294,7 +310,7 @@ end :: proc() {
 	}
 }
 
-@(private)
+//@(private)
 get_program :: #force_no_inline proc(shader: Shader) -> u32 {
 	return loaded_shaders[shader.id].program
 }
