@@ -257,6 +257,10 @@ update :: proc() {
 				gl.Uniform1f(param.location, param.value)
 				break
 			case ShaderParamV3:
+				x := param.value.x
+				y := param.value.y
+				z := param.value.z
+				gl.Uniform3f(param.location, x, y, z)
 				break
 			case ShaderParamM4:
 				break

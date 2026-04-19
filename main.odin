@@ -156,6 +156,10 @@ main :: proc() {
 					location = render.get_uniform_location(s, "mult"),
 					value = rand.float32(),
 				},
+				render.ShaderParamV3 {
+					location = render.get_uniform_location(s, "color"),
+					value = [3]f32{rand.float32(), rand.float32(), rand.float32()},
+				},
 			},
 		},
 	)
@@ -202,6 +206,16 @@ key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods
 			render.ShaderParamFloat {
 				location = render.get_uniform_location(s, "mult"),
 				value = rand.float32(),
+			},
+		)
+
+		render.update_draw(
+			s,
+			plane.vao,
+			draw_id,
+			render.ShaderParamV3 {
+				location = render.get_uniform_location(s, "color"),
+				value = [3]f32{rand.float32(), rand.float32(), rand.float32()},
 			},
 		)
 	}
