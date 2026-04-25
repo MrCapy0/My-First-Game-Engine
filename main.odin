@@ -122,6 +122,9 @@ main :: proc() {
 			fmt.printfln("press")
 		}
 
+		//fmt.printfln("%f %f", window.get_mouse_pos().x, window.get_mouse_pos().y)
+		fmt.printfln("%f %f", window.get_mouse_delta().x, window.get_mouse_delta().y)
+
 		mrz := linalg.matrix4_rotate_f32(linalg.DEG_PER_RAD * 30, {0, 0, 1})
 
 		gl.ClearColor(0.2, 0.3, 0.3, 1.0)
@@ -135,29 +138,25 @@ main :: proc() {
 		render.set_camera_transform(view_pos, linalg.quaternion_from_euler_angle_y(rot_y))
 
 		move_speed :: 0.1
-		if w_pressed {
+		if window.is_key_down(window.KEYS.W) {
 			view_pos.z -= move_speed
 		}
 
-		if s_pressed {
+		if window.is_key_down(window.KEYS.S) {
 			view_pos.z += move_speed
 		}
 
-		if a_pressed {
+		if window.is_key_down(window.KEYS.A) {
 			view_pos.x += move_speed
 		}
 
-		if d_pressed {
+		if window.is_key_down(window.KEYS.D) {
 			view_pos.x -= move_speed
 		}
 
-		if arrow_left_pressed {
-			rot_y += 0.03
-		}
+		mouse_delta := window.get_mouse_delta()
 
-		if arrow_right_pressed {
-			rot_y -= 0.03
-		}
+		rot_y += mouse_delta.x * -0.01
 
 		render.update()
 		window.update_draw()

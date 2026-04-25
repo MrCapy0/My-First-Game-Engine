@@ -11,8 +11,17 @@ GL_MAJOR_VERSION :: 4
 @(private)
 GL_MINOR_VERSION :: 1
 
+@(private)
 triggered_keyboard_keys: map[KEYS]bool
+
+@(private)
 down_keyboard_keys: map[KEYS]bool
+
+@(private)
+mouse_pos: [2]f32
+
+@(private)
+mouse_delta: [2]f32
 
 KEYS :: enum {
 	Unknown       = -1,
@@ -182,6 +191,7 @@ init :: proc(c: runtime.Context) {
 
 update_events :: proc() {
 
+	mouse_delta = {0, 0}
 	clear_map(&triggered_keyboard_keys)
 	glfw.PollEvents()
 }
@@ -229,12 +239,27 @@ key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods
 	}
 }
 
+get_mouse_pos :: #force_inline proc() -> [2]f32 {
+	return mouse_pos
+}
+
+get_mouse_delta :: #force_inline proc() -> [2]f32 {
+	return mouse_delta
+}
+
 @(private)
 mouse_callback :: proc "c" (window: glfw.WindowHandle, button, action, mods: i32) {
 }
 
 @(private)
-cursor_position_callback :: proc "c" (window: glfw.WindowHandle, xpos, ypos: f64) {}
+cursor_position_callback :: proc "c" (window: glfw.WindowHandle, xpos, ypos: f64) {
+
+	mouse_delta.x = f32(xpos) - mouse_pos.x
+	mouse_delta.y = f32(ypos) - mouse_pos.y
+
+	mouse_pos.x = f32(xpos)
+	mouse_pos.y = f32(ypos)
+}
 
 @(private)
 scroll_callback :: proc "c" (window: glfw.WindowHandle, xoffset, yoffset: f64) {}
