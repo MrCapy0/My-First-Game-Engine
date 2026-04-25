@@ -23,6 +23,9 @@ mouse_pos: [2]f32
 @(private)
 mouse_delta: [2]f32
 
+@(private)
+cursor_visible: bool
+
 KEYS :: enum {
 	Unknown       = -1,
 	Space         = 32,
@@ -153,11 +156,15 @@ glfw_window: glfw.WindowHandle
 @(private)
 window_context: runtime.Context
 
+last_frame_time: f64
+delta_time: f64
+
 init :: proc(c: runtime.Context) {
 
 	window_context = c
 	triggered_keyboard_keys = make(map[KEYS]bool)
 	down_keyboard_keys = make(map[KEYS]bool)
+	cursor_visible = true
 
 	if glfw.Init() != glfw.TRUE {
 		fmt.println("Failed to initialize GLFW")
@@ -191,9 +198,23 @@ init :: proc(c: runtime.Context) {
 
 update_events :: proc() {
 
+	time := glfw.GetTime()
+	delta_time = time - last_frame_time
+	last_frame_time = time
+
 	mouse_delta = {0, 0}
 	clear_map(&triggered_keyboard_keys)
 	glfw.PollEvents()
+
+	window_size := get_window_size()
+	cursor_pos_x, cursor_pos_y := glfw.GetCursorPos(glfw_window)
+	cursor_pos := [2]f32{f32(cursor_pos_x), f32(cursor_pos_y)}
+	window_center := [2]f32{f32(window_size.x / 2), f32(window_size.y / 2)}
+
+	if cursor_pos != window_center {
+		mouse_delta -= window_center - cursor_pos
+		glfw.SetCursorPos(glfw_window, f64(window_center.x), f64(window_center.y))
+	}
 }
 
 update_draw :: proc() {
@@ -208,19 +229,46 @@ end :: proc() {
 	delete(triggered_keyboard_keys)
 }
 
-get_window_size :: proc() -> [2]i32 {
+get_delta_time :: #force_inline proc() -> f64 {
+	return delta_time
+}
+
+get_window_size :: #force_inline proc() -> [2]i32 {
 
 	x, y := glfw.GetWindowSize(glfw_window)
 	return [2]i32{x, y}
 }
 
-is_key_triggered :: proc(key: KEYS) -> bool {
+is_key_triggered :: #force_inline proc(key: KEYS) -> bool {
 
 	return triggered_keyboard_keys[key]
 }
 
-is_key_down :: proc(key: KEYS) -> bool {
+is_key_down :: #force_inline proc(key: KEYS) -> bool {
 	return down_keyboard_keys[key]
+}
+
+get_mouse_pos :: #force_inline proc() -> [2]f32 {
+	return mouse_pos
+}
+
+get_mouse_delta :: #force_inline proc() -> [2]f32 {
+	return mouse_delta
+}
+
+set_cursor_visible :: #force_inline proc(visible: bool) {
+
+	if visible == cursor_visible {
+		return
+	}
+
+	cursor_visible = visible
+	mode := visible ? glfw.CURSOR_NORMAL : glfw.CURSOR_HIDDEN
+	glfw.SetInputMode(glfw_window, glfw.CURSOR, i32(mode))
+}
+
+get_cursor_visible :: #force_inline proc() -> bool {
+	return glfw.GetInputMode(glfw_window, glfw.CURSOR) == glfw.CURSOR_NORMAL
 }
 
 @(private)
@@ -237,14 +285,6 @@ key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods
 	if action == glfw.RELEASE {
 		delete_key(&down_keyboard_keys, k)
 	}
-}
-
-get_mouse_pos :: #force_inline proc() -> [2]f32 {
-	return mouse_pos
-}
-
-get_mouse_delta :: #force_inline proc() -> [2]f32 {
-	return mouse_delta
 }
 
 @(private)

@@ -36,6 +36,7 @@ arrow_left_pressed := false
 arrow_right_pressed := false
 
 rot_y: f32 = 0
+smooth_rot_y: f32 = 0
 
 main :: proc() {
 
@@ -111,21 +112,18 @@ main :: proc() {
 	view_pos = {0, 0, 5}
 	render.set_camera_transform(view_pos, render.camera_rot)
 
+	window.set_cursor_visible(false)
+
 	for true {
 		window.update_events()
 
 		if window.is_key_triggered(window.KEYS.Space) {
-			fmt.printfln("trigger")
+			window.set_cursor_visible(!window.get_cursor_visible())
 		}
 
-		if window.is_key_down(window.KEYS.E) {
-			fmt.printfln("press")
+		if window.get_mouse_delta() != {0, 0} {
+			fmt.printfln("%f %f", window.get_mouse_delta().x, window.get_mouse_delta().y)
 		}
-
-		//fmt.printfln("%f %f", window.get_mouse_pos().x, window.get_mouse_pos().y)
-		fmt.printfln("%f %f", window.get_mouse_delta().x, window.get_mouse_delta().y)
-
-		mrz := linalg.matrix4_rotate_f32(linalg.DEG_PER_RAD * 30, {0, 0, 1})
 
 		gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 		gl.Clear(gl.COLOR_BUFFER_BIT) // clear with the color set above
@@ -135,7 +133,13 @@ main :: proc() {
 
 		window_size := window.get_window_size()
 		aspect := f32(window_size.x) / f32(window_size.y)
-		render.set_camera_transform(view_pos, linalg.quaternion_from_euler_angle_y(rot_y))
+
+		smooth_rot_y = math.lerp(
+			smooth_rot_y,
+			rot_y,
+			f32(math.saturate(window.get_delta_time() * 20)),
+		)
+		render.set_camera_transform(view_pos, linalg.quaternion_from_euler_angle_y(smooth_rot_y))
 
 		move_speed :: 0.1
 		if window.is_key_down(window.KEYS.W) {
@@ -154,9 +158,13 @@ main :: proc() {
 			view_pos.x -= move_speed
 		}
 
+		if window.is_key_triggered(window.KEYS.Escape) {
+			break
+		}
+
 		mouse_delta := window.get_mouse_delta()
 
-		rot_y += mouse_delta.x * -0.01
+		rot_y += mouse_delta.x * -0.002
 
 		render.update()
 		window.update_draw()
