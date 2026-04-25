@@ -11,11 +11,11 @@ import glfw "vendor:glfw"
 
 import "src/engine/model"
 import "src/engine/render"
+import "src/engine/window"
 
 GL_MAJOR_VERSION :: 4
 GL_MINOR_VERSION :: 1
 
-window: glfw.WindowHandle
 default_context: runtime.Context
 
 should_exit := false
@@ -41,48 +41,14 @@ main :: proc() {
 
 	default_context = context
 
-	fmt.println("Hellope!")
-
-	if glfw.Init() != glfw.TRUE {
-		fmt.println("Failed to initialize GLFW")
-		return
-	}
-	defer glfw.Terminate()
-
-	glfw.WindowHint(glfw.RESIZABLE, glfw.TRUE)
-	glfw.WindowHint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
-	glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-	glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, GL_MAJOR_VERSION)
-	glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, GL_MINOR_VERSION)
-
-	window = glfw.CreateWindow(640, 480, "Todo", nil, nil)
-	defer glfw.DestroyWindow(window)
-
-	if window == nil {
-		fmt.println("Unable to create window")
-		return
-	}
-
-	glfw.MakeContextCurrent(window)
-
-	// Enable vsync
-	glfw.SwapInterval(1)
-
-	gl.load_up_to(GL_MAJOR_VERSION, GL_MINOR_VERSION, glfw.gl_set_proc_address)
-
+	window.init(default_context)
 	render.init()
-
-	glfw.SetKeyCallback(window, key_callback)
-	glfw.SetMouseButtonCallback(window, mouse_callback)
-	glfw.SetCursorPosCallback(window, cursor_position_callback)
-	glfw.SetFramebufferSizeCallback(window, framebuffer_size_callback)
 
 	s = render.load_shader("./my_shader.vert", "./my_shader.frag")
 	t := render.load_texture("./assets/materials/Ceramic Floor_1.png")
 
 	cube := model.from_file("assets/models/Cube.glb")
 	transform = linalg.matrix4_translate_f32({0, 0, 0})
-
 
 	plane.vertices = []f32 {
 		0.5,
@@ -145,7 +111,16 @@ main :: proc() {
 	view_pos = {0, 0, 5}
 	render.set_camera_transform(view_pos, render.camera_rot)
 
-	for !glfw.WindowShouldClose(window) && !should_exit {
+	for true {
+		window.update_events()
+
+		if window.is_key_triggered(window.KEYS.Space) {
+			fmt.printfln("trigger")
+		}
+
+		if window.is_key_down(window.KEYS.E) {
+			fmt.printfln("press")
+		}
 
 		mrz := linalg.matrix4_rotate_f32(linalg.DEG_PER_RAD * 30, {0, 0, 1})
 
@@ -155,7 +130,7 @@ main :: proc() {
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, render.loaded_textures[t.id].texture)
 
-		window_size := get_window_size()
+		window_size := window.get_window_size()
 		aspect := f32(window_size.x) / f32(window_size.y)
 		render.set_camera_transform(view_pos, linalg.quaternion_from_euler_angle_y(rot_y))
 
@@ -184,123 +159,10 @@ main :: proc() {
 			rot_y -= 0.03
 		}
 
-
 		render.update()
-
-		glfw.SwapBuffers(window)
-		glfw.PollEvents()
+		window.update_draw()
 	}
 
 	render.end()
-
-	glfw.Terminate()
-}
-
-
-key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: i32) {
-
-	context = default_context
-
-	if key == glfw.KEY_ESCAPE && action == glfw.PRESS {
-		should_exit = true
-	}
-
-	if key == glfw.KEY_W && action == glfw.PRESS {
-		w_pressed = true
-	}
-
-	if key == glfw.KEY_W && action == glfw.RELEASE {
-		w_pressed = false
-	}
-
-	if key == glfw.KEY_S && action == glfw.PRESS {
-		s_pressed = true
-	}
-
-	if key == glfw.KEY_S && action == glfw.RELEASE {
-		s_pressed = false
-	}
-
-	if key == glfw.KEY_D && action == glfw.PRESS {
-		d_pressed = true
-	}
-
-	if key == glfw.KEY_D && action == glfw.RELEASE {
-		d_pressed = false
-	}
-
-	if key == glfw.KEY_A && action == glfw.PRESS {
-		a_pressed = true
-	}
-
-	if key == glfw.KEY_A && action == glfw.RELEASE {
-		a_pressed = false
-	}
-
-	if key == glfw.KEY_LEFT && action == glfw.PRESS {
-		arrow_left_pressed = true
-	}
-
-	if key == glfw.KEY_LEFT && action == glfw.RELEASE {
-		arrow_left_pressed = false
-	}
-
-	if key == glfw.KEY_RIGHT && action == glfw.PRESS {
-		arrow_right_pressed = true
-	}
-
-	if key == glfw.KEY_RIGHT && action == glfw.RELEASE {
-		arrow_right_pressed = false
-	}
-
-	if key == glfw.KEY_SPACE && action == glfw.PRESS {
-		render.remove_draw(s, plane.vao, draw_id)
-	}
-
-	if key == glfw.KEY_ENTER && action == glfw.PRESS {
-		render.update_draw(
-			s,
-			plane.vao,
-			draw_id,
-			render.ShaderParamFloat {
-				location = render.get_uniform_location(s, "mult"),
-				value = rand.float32(),
-			},
-		)
-
-		render.update_draw(
-			s,
-			plane.vao,
-			draw_id,
-			render.ShaderParamV3 {
-				location = render.get_uniform_location(s, "color"),
-				value = [3]f32{rand.float32(), rand.float32(), rand.float32()},
-			},
-		)
-	}
-
-	if key == glfw.KEY_SPACE && action == glfw.PRESS {
-
-		random_v := rand.float32()
-		uniform_loc := render.get_uniform_location(s, "mult")
-	}
-}
-
-mouse_callback :: proc "c" (window: glfw.WindowHandle, button, action, mods: i32) {}
-
-cursor_position_callback :: proc "c" (window: glfw.WindowHandle, xpos, ypos: f64) {}
-
-scroll_callback :: proc "c" (window: glfw.WindowHandle, xoffset, yoffset: f64) {}
-
-framebuffer_size_callback :: proc "c" (window: glfw.WindowHandle, width, height: i32) {
-
-	context = default_context
-	window_size := get_window_size()
-	gl.Viewport(0, 0, window_size.x, window_size.y)
-}
-
-get_window_size :: proc() -> [2]i32 {
-
-	x, y := glfw.GetWindowSize(window)
-	return [2]i32{x, y}
+	window.end()
 }
