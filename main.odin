@@ -18,158 +18,110 @@ GL_MINOR_VERSION :: 1
 
 default_context: runtime.Context
 
-should_exit := false
-
-draw_id: u64
-s: render.Shader
-transform: linalg.Matrix4x4f32
-
-plane: model.Mesh
-view_pos: linalg.Vector3f32
-
-w_pressed := false
-s_pressed := false
-a_pressed := false
-d_pressed := false
-
-arrow_left_pressed := false
-arrow_right_pressed := false
-
-rot_y: f32 = 0
-smooth_rot_y: f32 = 0
-
 main :: proc() {
 
 	default_context = context
 
 	window.init(default_context)
-	render.init()
 
-	s = render.load_shader("./my_shader.vert", "./my_shader.frag")
-	t := render.load_texture("./assets/materials/Ceramic Floor_1.png")
+	//cube := model.from_file("assets/models/Cube.glb")
+	//plane_2 := model.from_file("assets/models/Plane.glb")
+	//test := model.from_file("assets/models/Test.glb")
+	//tutorial1 := model.from_file("assets/models/tutorial1.glb")
+	triangle := model.from_file("assets/models/triangle.glb")
+	shader := render.load_shader("my_shader.vert", "my_shader.frag")
 
-	cube := model.from_file("assets/models/Cube.glb")
-	transform = linalg.matrix4_translate_f32({0, 0, 0})
+	view_param_loc := gl.GetUniformLocation(shader.program, "v")
+	perspective_param_loc := gl.GetUniformLocation(shader.program, "p")
+	transform_param_loc := gl.GetUniformLocation(shader.program, "t")
 
-	plane.vertices = []f32 {
-		0.5,
-		0.5,
-		0.0,
-		1.0,
-		0.0,
-		0.0,
-		1.0,
-		1.0, // top right
-		0.5,
-		-0.5,
-		0.0,
-		0.0,
-		1.0,
-		0.0,
-		1.0,
-		0.0, // bottom right
-		-0.5,
-		-0.5,
-		0.0,
-		0.0,
-		0.0,
-		1.0,
-		0.0,
-		0.0, // bottom left
-		-0.5,
-		0.5,
-		0.0,
-		1.0,
-		1.0,
-		0.0,
-		0.0,
-		1.0, // top left
-	}
-	plane.indices = []u32{0, 1, 3, 1, 2, 3}
-	model.create_gpu_instance(&plane)
+	window.set_cursor_visible(true)
 
-	draw_id = render.add_draw(
-		s,
-		plane.vao,
-		{
-			parameters = {
-				render.ShaderParamFloat {
-					location = render.get_uniform_location(s, "mult"),
-					value = rand.float32(),
-				},
-				render.ShaderParamV3 {
-					location = render.get_uniform_location(s, "color"),
-					value = [3]f32{rand.float32(), rand.float32(), rand.float32()},
-				},
-				render.ShaderParamM4 {
-					location = render.get_uniform_location(s, "transform"),
-					value = transform,
-				},
-			},
-		},
+	vbo: u32
+	vao: u32
+	ebo: u32
+
+	part := triangle.parts[0]
+
+	gl.GenVertexArrays(1, &vao)
+	gl.BindVertexArray(vao)
+	gl.GenBuffers(1, &vbo)
+	gl.GenBuffers(1, &ebo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
+	gl.BufferData(
+		gl.ARRAY_BUFFER,
+		len(triangle.parts[0].buffer) * size_of(f32),
+		raw_data(triangle.parts[0].buffer),
+		gl.STATIC_DRAW,
 	)
+	gl.BufferData(
+		gl.ELEMENT_ARRAY_BUFFER,
+		len(triangle.parts[0].indices_buffer) * size_of(u32),
+		raw_data(triangle.parts[0].indices_buffer),
+		gl.STATIC_DRAW,
+	)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, size_of(f32) * 3, 0)
+	gl.EnableVertexAttribArray(0)
 
-	view_pos = {0, 0, 5}
-	render.set_camera_transform(view_pos, render.camera_rot)
+	gl.BindVertexArray(0)
 
-	window.set_cursor_visible(false)
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+
+	cam_pos: linalg.Vector3f32 = {0, 0, -3}
+	cam_rot: linalg.Vector3f32 = {0, 0, 0}
+	pos: linalg.Vector3f32 = {0, 0, 0}
+	rot: linalg.Vector3f32 = {0, 0, 0}
 
 	for true {
 		window.update_events()
-
-		if window.is_key_triggered(window.KEYS.Space) {
-			window.set_cursor_visible(!window.get_cursor_visible())
-		}
-
-		if window.get_mouse_delta() != {0, 0} {
-			fmt.printfln("%f %f", window.get_mouse_delta().x, window.get_mouse_delta().y)
-		}
-
-		gl.ClearColor(0.2, 0.3, 0.3, 1.0)
-		gl.Clear(gl.COLOR_BUFFER_BIT) // clear with the color set above
-
-		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, render.loaded_textures[t.id].texture)
-
-		window_size := window.get_window_size()
-		aspect := f32(window_size.x) / f32(window_size.y)
-
-		smooth_rot_y = math.lerp(
-			smooth_rot_y,
-			rot_y,
-			f32(math.saturate(window.get_delta_time() * 20)),
-		)
-		render.set_camera_transform(view_pos, linalg.quaternion_from_euler_angle_y(smooth_rot_y))
-
-		move_speed :: 0.1
-		if window.is_key_down(window.KEYS.W) {
-			view_pos.z -= move_speed
-		}
-
-		if window.is_key_down(window.KEYS.S) {
-			view_pos.z += move_speed
-		}
-
-		if window.is_key_down(window.KEYS.A) {
-			view_pos.x += move_speed
-		}
-
-		if window.is_key_down(window.KEYS.D) {
-			view_pos.x -= move_speed
-		}
 
 		if window.is_key_triggered(window.KEYS.Escape) {
 			break
 		}
 
-		mouse_delta := window.get_mouse_delta()
+		cam_rot.y += f32(window.get_delta_time()) * 10
+		pos.y += f32(window.get_delta_time()) / 3
 
-		rot_y += mouse_delta.x * -0.002
+		cam_pos.z += f32(window.get_delta_time())
 
-		render.update()
+		perspective := linalg.matrix4_perspective(60, window.get_window_aspect(), 0.05, 1000, true)
+		cam_mat := linalg.matrix4_translate(cam_pos)
+		// cam_mat *= linalg.matrix4_from_quaternion_f32(
+		// 	linalg.quaternion_from_pitch_yaw_roll_f32(cam_rot.x, cam_rot.y, cam_rot.z),
+		// )
+		// cam_mat := linalg.matrix4_look_at(
+		// 	cam_pos,
+		// 	linalg.Vector3f32({0, 0, 0}),
+		// 	linalg.Vector3f32({0, 1, 0}),
+		// 	true,
+		// )
+
+		rot.z += f32(window.get_delta_time())
+		transform := linalg.identity(linalg.Matrix4f32)
+		//transform = linalg.matrix4_translate_f32(pos)
+		transform *= linalg.matrix4_from_quaternion(
+			linalg.quaternion_from_pitch_yaw_roll(rot.x, rot.y, rot.z),
+		)
+
+		gl.ClearColor(0.2, 0.3, 0.3, 1.0)
+		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) // clear with the color set above
+
+		gl.UseProgram(shader.program)
+		gl.UniformMatrix4fv(view_param_loc, 1, gl.FALSE, &cam_mat[0, 0])
+		gl.UniformMatrix4fv(perspective_param_loc, 1, gl.FALSE, &perspective[0, 0])
+		gl.UniformMatrix4fv(transform_param_loc, 1, gl.FALSE, &transform[0, 0])
+
+		gl.BindVertexArray(vao)
+		gl.DrawElements(
+			gl.TRIANGLES,
+			i32(len(triangle.parts[0].indices_buffer)),
+			gl.UNSIGNED_INT,
+			nil,
+		)
+
 		window.update_draw()
 	}
 
-	render.end()
 	window.end()
 }

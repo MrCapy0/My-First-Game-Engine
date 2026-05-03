@@ -156,7 +156,10 @@ glfw_window: glfw.WindowHandle
 @(private)
 window_context: runtime.Context
 
+@(private)
 last_frame_time: f64
+
+@(private)
 delta_time: f64
 
 init :: proc(c: runtime.Context) {
@@ -211,10 +214,10 @@ update_events :: proc() {
 	cursor_pos := [2]f32{f32(cursor_pos_x), f32(cursor_pos_y)}
 	window_center := [2]f32{f32(window_size.x / 2), f32(window_size.y / 2)}
 
-	if cursor_pos != window_center {
-		mouse_delta -= window_center - cursor_pos
-		glfw.SetCursorPos(glfw_window, f64(window_center.x), f64(window_center.y))
-	}
+	// if cursor_pos != window_center {
+	// 	mouse_delta -= window_center - cursor_pos
+	// 	glfw.SetCursorPos(glfw_window, f64(window_center.x), f64(window_center.y))
+	// }
 }
 
 update_draw :: proc() {
@@ -237,6 +240,11 @@ get_window_size :: #force_inline proc() -> [2]i32 {
 
 	x, y := glfw.GetWindowSize(glfw_window)
 	return [2]i32{x, y}
+}
+
+get_window_aspect :: #force_no_inline proc() -> f32 {
+	size := get_window_size()
+	return f32(size.x) / f32(size.y)
 }
 
 is_key_triggered :: #force_inline proc(key: KEYS) -> bool {

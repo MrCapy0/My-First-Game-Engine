@@ -1,118 +1,181 @@
 package model
 
+import "core:strings"
 import gl "vendor:OpenGL"
 import gltf "vendor:cgltf"
+import "vendor:glfw"
 
 import "../console"
 
 V3 :: [3]f32
 
-Mesh :: struct {
-	indices:  []u32,
-	vertices: []f32,
-	vao:      u32,
-	vbo:      u32,
-	ebo:      u32,
+MeshPart :: struct {
+	buffer:         []f32,
+	indices_buffer: []u32,
 }
 
-from_file :: proc(path: string) -> ^Mesh {
+Mesh :: struct {
+	parts: []MeshPart,
+}
+
+from_file :: proc(path: string) -> Mesh {
 
 	options: gltf.options = {}
 	cpath := cstring(raw_data(path))
 	data, result := gltf.parse_file(options, cpath)
 
 	if result != .success {
-
 		console.error("Can't load model file on %s error: %v", path, result)
-		return nil
+		return {}
 	}
 
 	result = gltf.load_buffers(options, data, cpath)
 	if result != .success {
-
 		console.error("Can't read model on %s error: %v", path, result)
-		return nil
+		return {}
 	}
 
-	primitive := data.meshes[0].primitives[0]
-	mesh := new(Mesh)
-
-	if primitive.indices != nil {
-
-		accessor := primitive.indices
-		indices := make([]u32, accessor.count)
-		t := new([]f32)
-
-		test := gltf.accessor_unpack_indices(accessor, &indices[0], size_of(u32), accessor.count)
-		mesh.indices = indices
-	}
-
-	for attribute in primitive.attributes {
-
-		if attribute.type == .position {
-
-			accessor := attribute.data
-			num_components := gltf.num_components(accessor.type)
-			total_floats := accessor.count * num_components
-
-			vertices := make([]f32, total_floats)
-			test := gltf.accessor_unpack_floats(accessor, &vertices[0], total_floats)
-			mesh.vertices = vertices
+	console.log("scenes %d", len(data.scenes))
+	for s in data.scenes {
+		console.log("Scene %s", s.name)
+		for n in s.nodes {
+			log_scene_node(data, n, 1)
 		}
 	}
+	console.log("meshes %d", len(data.meshes))
+	for m in data.meshes {
+		console.log("	%s", m.name)
+	}
+	console.log("images %d", len(data.images))
 
-	create_gpu_instance(mesh)
+	console.log("     ")
+
+
+	return process_mesh(data, 0)
+}
+
+process_mesh :: proc(data: ^gltf.data, mesh_id: i32) -> Mesh {
+
+	gltf_mesh := data.meshes[mesh_id]
+	mesh: Mesh = {}
+	mesh.parts = make([]MeshPart, len(gltf_mesh.primitives))
+	for p, i in gltf_mesh.primitives {
+
+		part := process_mesh_part(data, p)
+		mesh.parts[i] = part
+	}
 
 	return mesh
 }
 
-unload_mesh :: proc(mesh: ^Mesh) {
+process_mesh_part :: proc(data: ^gltf.data, primitive: gltf.primitive) -> MeshPart {
 
-	if mesh == nil {
-		return
+	if primitive.type != .triangles {
+
+		console.error("Invalid mesh part type: %v!", primitive.type)
+		return {}
 	}
 
-	free(mesh)
+	position_buffer: []f32
+	position_count: uint
+
+	for att in primitive.attributes {
+
+		console.log("att type %v", att.type)
+
+		accessor := att.data
+
+		if (att.type == .position) {
+
+			position_count = accessor.count
+
+			console.log("vertex count %d", position_count)
+
+			if (accessor.component_type != .r_32f) {
+
+				console.error(
+					"Invalid mesh! position components must be %v but is %v",
+					gltf.component_type.r_32f,
+					accessor.component_type,
+				)
+			}
+
+			if (accessor.type != .vec3) {
+
+				console.error(
+					"Invalid mesh! position type must be %v but is %v",
+					gltf.type.vec3,
+					accessor.type,
+				)
+			}
+
+			position_buffer = make([]f32, position_count * 3)
+
+			count := gltf.accessor_unpack_floats(accessor, &position_buffer[0], position_count * 3)
+			console.log("buffer len %d", len(position_buffer))
+			console.log("loaded vertices count %d", count)
+		}
+	}
+
+
+	indices_accessor := primitive.indices
+	if indices_accessor.component_type != .r_16u {
+
+		console.error(
+			"TODO: Add support for meshs with indices %v",
+			indices_accessor.component_type,
+		)
+
+		console.error("Was expected u16 but the indice is %v.", indices_accessor.component_type)
+
+		return {}
+	}
+
+	indices_buffer := make([]u16, indices_accessor.count)
+	unpacked_indices_count := gltf.accessor_unpack_indices(
+		indices_accessor,
+		&indices_buffer[0],
+		size_of(u16),
+		indices_accessor.count,
+	)
+
+	part: MeshPart = {}
+	part.buffer = make([]f32, position_count * 3)
+	part.indices_buffer = make([]u32, unpacked_indices_count)
+
+	for p, i in position_buffer {
+		part.buffer[i] = p
+	}
+
+	for indice, i in indices_buffer {
+		part.indices_buffer[i] = u32(indice)
+	}
+
+	delete(position_buffer)
+	delete(indices_buffer)
+
+	return part
 }
 
-create_gpu_instance :: proc(mesh: ^Mesh) {
+log_scene_node :: proc(data: ^gltf.data, node: ^gltf.node, iteration: i32) {
 
-	gl.GenVertexArrays(1, &mesh.vao)
-	gl.BindVertexArray(mesh.vao)
+	sb: strings.Builder
+	strings.builder_init(&sb)
+	defer strings.builder_destroy(&sb)
 
-	gl.GenBuffers(1, &mesh.vbo)
-	gl.GenBuffers(1, &mesh.ebo)
+	for i: i32 = 0; i < iteration * 4; i += 1 {
+		strings.write_string(&sb, " ")
+	}
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, mesh.vbo)
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ebo)
+	strings.write_string(&sb, string(node.name))
+	strings.write_string(&sb, "		")
+	if node.mesh != nil {
+		strings.write_string(&sb, "mesh: ")
+		strings.write_string(&sb, string(node.mesh.name))
+	}
 
-	gl.BufferData(
-		gl.ARRAY_BUFFER,
-		len(mesh.vertices) * size_of(f32),
-		raw_data(mesh.vertices),
-		gl.STATIC_DRAW,
-	)
-
-	gl.BufferData(
-		gl.ELEMENT_ARRAY_BUFFER,
-		len(mesh.indices) * size_of(u32),
-		raw_data(mesh.indices),
-		gl.STATIC_DRAW,
-	)
-
-	// Vertex position only
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 0)
-	gl.EnableVertexAttribArray(0)
-
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 3 * size_of(f32))
-	gl.EnableVertexAttribArray(1)
-
-	gl.VertexAttribPointer(2, 2, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 6 * size_of(f32))
-	gl.EnableVertexAttribArray(2)
-
-	// Unbinding
-	gl.BindVertexArray(0)
-
-	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0)
+	console.log("%s", strings.to_string(sb))
+	for n in node.children {
+		log_scene_node(data, n, iteration + 1)
+	}
 }
