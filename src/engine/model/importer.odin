@@ -1,24 +1,21 @@
 package model
 
 import "core:strings"
-import gl "vendor:OpenGL"
 import gltf "vendor:cgltf"
-import "vendor:glfw"
 
-import "../console"
+import engine "../"
+import console "../console"
+import render "../render"
 
-V3 :: [3]f32
+@(private)
+Mesh :: engine.Mesh
 
-MeshPart :: struct {
-	buffer:         []f32,
-	indices_buffer: []u32,
-}
+@(private)
+MeshPart :: engine.MeshPart
 
-Mesh :: struct {
-	parts: []MeshPart,
-}
+from_file :: proc(path: string) -> ^Mesh {
 
-from_file :: proc(path: string) -> Mesh {
+	console.log("Importing model from %s", path)
 
 	options: gltf.options = {}
 	cpath := cstring(raw_data(path))
@@ -42,33 +39,27 @@ from_file :: proc(path: string) -> Mesh {
 			log_scene_node(data, n, 1)
 		}
 	}
-	console.log("meshes %d", len(data.meshes))
+	console.log("Meshes %d", len(data.meshes))
 	for m in data.meshes {
 		console.log("	%s", m.name)
 	}
-	console.log("images %d", len(data.images))
 
-	console.log("     ")
-
-
-	return process_mesh(data, 0)
-}
-
-process_mesh :: proc(data: ^gltf.data, mesh_id: i32) -> Mesh {
-
-	gltf_mesh := data.meshes[mesh_id]
-	mesh: Mesh = {}
-	mesh.parts = make([]MeshPart, len(gltf_mesh.primitives))
+	gltf_mesh := data.meshes[0]
+	mesh := new(Mesh)
+	mesh.parts = make([]^MeshPart, len(gltf_mesh.primitives))
 	for p, i in gltf_mesh.primitives {
 
 		part := process_mesh_part(data, p)
 		mesh.parts[i] = part
 	}
 
+	render.create_gpu_mesh(mesh)
+
 	return mesh
 }
 
-process_mesh_part :: proc(data: ^gltf.data, primitive: gltf.primitive) -> MeshPart {
+@(private)
+process_mesh_part :: proc(data: ^gltf.data, primitive: gltf.primitive) -> ^MeshPart {
 
 	if primitive.type != .triangles {
 
@@ -81,15 +72,12 @@ process_mesh_part :: proc(data: ^gltf.data, primitive: gltf.primitive) -> MeshPa
 
 	for att in primitive.attributes {
 
-		console.log("att type %v", att.type)
-
 		accessor := att.data
-
 		if (att.type == .position) {
 
 			position_count = accessor.count
 
-			console.log("vertex count %d", position_count)
+			console.log("Vertices count %d", position_count)
 
 			if (accessor.component_type != .r_32f) {
 
@@ -110,13 +98,9 @@ process_mesh_part :: proc(data: ^gltf.data, primitive: gltf.primitive) -> MeshPa
 			}
 
 			position_buffer = make([]f32, position_count * 3)
-
 			count := gltf.accessor_unpack_floats(accessor, &position_buffer[0], position_count * 3)
-			console.log("buffer len %d", len(position_buffer))
-			console.log("loaded vertices count %d", count)
 		}
 	}
-
 
 	indices_accessor := primitive.indices
 	if indices_accessor.component_type != .r_16u {
@@ -139,7 +123,7 @@ process_mesh_part :: proc(data: ^gltf.data, primitive: gltf.primitive) -> MeshPa
 		indices_accessor.count,
 	)
 
-	part: MeshPart = {}
+	part := new(MeshPart)
 	part.buffer = make([]f32, position_count * 3)
 	part.indices_buffer = make([]u32, unpacked_indices_count)
 

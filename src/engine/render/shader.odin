@@ -10,8 +10,6 @@ Shader :: struct {
 	program: u32,
 }
 
-draw_requests: u64 = 0
-
 load_shader :: proc(v_path: string, f_path: string) -> Shader {
 
 	allocator := context.allocator

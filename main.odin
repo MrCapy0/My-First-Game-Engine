@@ -1,13 +1,9 @@
 package main
 
 import runtime "base:runtime"
-import c "core:c"
-import fmt "core:fmt"
-import "core:math"
-import "core:math/linalg"
+import lmath "core:math/linalg"
 import "core:math/rand"
 import gl "vendor:OpenGL"
-import glfw "vendor:glfw"
 
 import "src/engine/model"
 import "src/engine/render"
@@ -28,7 +24,9 @@ main :: proc() {
 	//plane_2 := model.from_file("assets/models/Plane.glb")
 	//test := model.from_file("assets/models/Test.glb")
 	//tutorial1 := model.from_file("assets/models/tutorial1.glb")
-	triangle := model.from_file("assets/models/triangle.glb")
+	//mesh := model.from_file("assets/models/triangle.glb")
+	//mesh := model.from_file("assets/models/House_5.glb")
+	mesh := model.from_file("assets/models/car.glb")
 	shader := render.load_shader("my_shader.vert", "my_shader.frag")
 
 	view_param_loc := gl.GetUniformLocation(shader.program, "v")
@@ -41,37 +39,19 @@ main :: proc() {
 	vao: u32
 	ebo: u32
 
-	part := triangle.parts[0]
-
-	gl.GenVertexArrays(1, &vao)
-	gl.BindVertexArray(vao)
-	gl.GenBuffers(1, &vbo)
-	gl.GenBuffers(1, &ebo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
-	gl.BufferData(
-		gl.ARRAY_BUFFER,
-		len(triangle.parts[0].buffer) * size_of(f32),
-		raw_data(triangle.parts[0].buffer),
-		gl.STATIC_DRAW,
-	)
-	gl.BufferData(
-		gl.ELEMENT_ARRAY_BUFFER,
-		len(triangle.parts[0].indices_buffer) * size_of(u32),
-		raw_data(triangle.parts[0].indices_buffer),
-		gl.STATIC_DRAW,
-	)
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, size_of(f32) * 3, 0)
-	gl.EnableVertexAttribArray(0)
-
-	gl.BindVertexArray(0)
-
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
-	cam_pos: linalg.Vector3f32 = {0, 0, -3}
-	cam_rot: linalg.Vector3f32 = {0, 0, 0}
-	pos: linalg.Vector3f32 = {0, 0, 0}
-	rot: linalg.Vector3f32 = {0, 0, 0}
+	cam_pos: lmath.Vector3f32 = {0, -2, -6}
+	cam_rot: lmath.Vector3f32 = {0, 0, 0}
+	pos: lmath.Vector3f32 = {0, 0, 0}
+	rot: lmath.Vector3f32 = {0, 0, 0}
+
+	model: render.Model = {}
+	model.mesh = mesh
+	model.shaders = make([]render.Shader, len(mesh.parts))
+	for i in 0 ..< len(mesh.parts) {
+		model.shaders[i] = shader
+	}
 
 	for true {
 		window.update_events()
@@ -80,13 +60,19 @@ main :: proc() {
 			break
 		}
 
-		cam_rot.y += f32(window.get_delta_time()) * 10
+		cam_rot.y += f32(window.get_delta_time()) * 0.1
 		pos.y += f32(window.get_delta_time()) / 3
 
-		cam_pos.z += f32(window.get_delta_time())
+		//cam_pos.z += f32(window.get_delta_time())
 
-		perspective := linalg.matrix4_perspective(60, window.get_window_aspect(), 0.05, 1000, true)
-		cam_mat := linalg.matrix4_translate(cam_pos)
+		perspective := lmath.matrix4_perspective(
+			60 * lmath.RAD_PER_DEG,
+			window.get_window_aspect(),
+			0.05,
+			1000,
+			true,
+		)
+		cam_mat := lmath.matrix4_translate(cam_pos)
 		// cam_mat *= linalg.matrix4_from_quaternion_f32(
 		// 	linalg.quaternion_from_pitch_yaw_roll_f32(cam_rot.x, cam_rot.y, cam_rot.z),
 		// )
@@ -97,11 +83,11 @@ main :: proc() {
 		// 	true,
 		// )
 
-		rot.z += f32(window.get_delta_time())
-		transform := linalg.identity(linalg.Matrix4f32)
+		rot.y += f32(window.get_delta_time() * 0.1)
+		transform := lmath.identity(lmath.Matrix4f32)
 		//transform = linalg.matrix4_translate_f32(pos)
-		transform *= linalg.matrix4_from_quaternion(
-			linalg.quaternion_from_pitch_yaw_roll(rot.x, rot.y, rot.z),
+		transform *= lmath.matrix4_from_quaternion(
+			lmath.quaternion_from_pitch_yaw_roll(rot.x, rot.y, rot.z),
 		)
 
 		gl.ClearColor(0.2, 0.3, 0.3, 1.0)
@@ -112,14 +98,7 @@ main :: proc() {
 		gl.UniformMatrix4fv(perspective_param_loc, 1, gl.FALSE, &perspective[0, 0])
 		gl.UniformMatrix4fv(transform_param_loc, 1, gl.FALSE, &transform[0, 0])
 
-		gl.BindVertexArray(vao)
-		gl.DrawElements(
-			gl.TRIANGLES,
-			i32(len(triangle.parts[0].indices_buffer)),
-			gl.UNSIGNED_INT,
-			nil,
-		)
-
+		render.draw_model(model)
 		window.update_draw()
 	}
 
