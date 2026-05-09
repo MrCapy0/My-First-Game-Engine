@@ -9,6 +9,9 @@ Mesh :: engine.Mesh
 @(private)
 MeshPart :: engine.MeshPart
 
+POSITION_ATTRIB :: 0
+MATRIX_INSTANCING_ATTRIB :: 10
+
 create_gpu_mesh :: proc(mesh: ^Mesh) {
 
 	for p in mesh.parts {
@@ -31,7 +34,7 @@ create_gpu_mesh :: proc(mesh: ^Mesh) {
 			raw_data(p.indices_buffer),
 			gl.STATIC_DRAW,
 		)
-		gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, size_of(f32) * 3, 0)
+		gl.VertexAttribPointer(POSITION_ATTRIB, 3, gl.FLOAT, gl.FALSE, size_of(f32) * 3, 0)
 		gl.EnableVertexAttribArray(0)
 	}
 
@@ -48,11 +51,12 @@ draw_model :: proc(model: Model) {
 
 		gl.UseProgram(shader.program)
 		gl.BindVertexArray(p.vao)
-		gl.DrawElements(
+		gl.DrawElementsInstanced(
 			gl.TRIANGLES,
 			i32(len(p.indices_buffer)),
 			gl.UNSIGNED_INT,
 			nil,
+			10,
 		)
 	}
 }

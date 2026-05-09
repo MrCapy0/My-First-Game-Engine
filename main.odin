@@ -41,7 +41,7 @@ main :: proc() {
 
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
-	cam_pos: lmath.Vector3f32 = {0, -2, -6}
+	cam_pos: lmath.Vector3f32 = {0, -3, -20}
 	cam_rot: lmath.Vector3f32 = {0, 0, 0}
 	pos: lmath.Vector3f32 = {0, 0, 0}
 	rot: lmath.Vector3f32 = {0, 0, 0}
@@ -49,8 +49,76 @@ main :: proc() {
 	model: render.Model = {}
 	model.mesh = mesh
 	model.shaders = make([]render.Shader, len(mesh.parts))
-	for i in 0 ..< len(mesh.parts) {
+
+
+	instances: [10]lmath.Matrix4f32
+
+	for i in 0 ..< 10 {
+		x := rand.float32_range(-10, 10)
+		z := rand.float32_range(-20, 20)
+		instances[i] = lmath.matrix4_translate(lmath.Vector3f32({x, 0, z}))
+	}
+
+	v4_size := size_of(lmath.Vector4f32)
+	m4_size := size_of(lmath.Matrix4f32)
+
+	instances_buffer_id: u32
+	gl.GenBuffers(1, &instances_buffer_id)
+	gl.BindBuffer(gl.ARRAY_BUFFER, instances_buffer_id)
+	gl.BufferData(gl.ARRAY_BUFFER, 10 * m4_size, &instances, gl.STATIC_DRAW)
+
+	for part, i in mesh.parts {
 		model.shaders[i] = shader
+
+		vao := part.vao
+
+		gl.BindVertexArray(vao)
+
+		gl.VertexAttribPointer(
+			render.MATRIX_INSTANCING_ATTRIB,
+			4,
+			gl.FLOAT,
+			gl.FALSE,
+			i32(4 * v4_size),
+			0,
+		)
+
+		gl.VertexAttribPointer(
+			render.MATRIX_INSTANCING_ATTRIB + 1,
+			4,
+			gl.FLOAT,
+			gl.FALSE,
+			i32(4 * v4_size),
+			uintptr(v4_size),
+		)
+
+		gl.VertexAttribPointer(
+			render.MATRIX_INSTANCING_ATTRIB + 2,
+			4,
+			gl.FLOAT,
+			gl.FALSE,
+			i32(4 * v4_size),
+			uintptr(2 * v4_size),
+		)
+
+		gl.VertexAttribPointer(
+			render.MATRIX_INSTANCING_ATTRIB + 3,
+			4,
+			gl.FLOAT,
+			gl.FALSE,
+			i32(4 * v4_size),
+			uintptr(3 * v4_size),
+		)
+
+		gl.EnableVertexAttribArray(render.MATRIX_INSTANCING_ATTRIB)
+		gl.EnableVertexAttribArray(render.MATRIX_INSTANCING_ATTRIB + 1)
+		gl.EnableVertexAttribArray(render.MATRIX_INSTANCING_ATTRIB + 2)
+		gl.EnableVertexAttribArray(render.MATRIX_INSTANCING_ATTRIB + 3)
+
+		gl.VertexAttribDivisor(render.MATRIX_INSTANCING_ATTRIB, 1)
+		gl.VertexAttribDivisor(render.MATRIX_INSTANCING_ATTRIB + 1, 1)
+		gl.VertexAttribDivisor(render.MATRIX_INSTANCING_ATTRIB + 2, 1)
+		gl.VertexAttribDivisor(render.MATRIX_INSTANCING_ATTRIB + 3, 1)
 	}
 
 	for true {

@@ -18,6 +18,8 @@ uniform mat4 p;
 uniform mat4 v;
 uniform mat4 t;
 
+layout (location = 10) in mat4 instance_t;
+
 void main()
 {
 	mat4 view = camera.rotation * camera.translation;
@@ -25,6 +27,7 @@ void main()
 	gl_Position = mvp * vec4(aPos, 1.0);
 	gl_Position =  vec4(aPos, 1.0);
 	gl_Position = (p * v) * t * vec4(aPos, 1.0);
+	gl_Position = (p * v) * instance_t * vec4(aPos, 1.0);
 	//gl_Position = t*vec4(aPos, 1.0);
 	ourColor = aColor;
 	TexCoord = vec2(aTexCoord.x, aTexCoord.y);
