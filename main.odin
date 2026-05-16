@@ -1,7 +1,6 @@
 package main
 
 import runtime "base:runtime"
-import lmath "core:math/linalg"
 import "core:math/rand"
 import gl "vendor:OpenGL"
 
@@ -9,6 +8,8 @@ import "src/engine/console"
 import "src/engine/model"
 import "src/engine/render"
 import "src/engine/window"
+
+import lmath "src/engine/lmath"
 
 GL_MAJOR_VERSION :: 4
 GL_MINOR_VERSION :: 1
@@ -38,10 +39,10 @@ main :: proc() {
 
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
-	cam_pos: lmath.Vector3f32 = {0, -3, -20}
-	cam_rot: lmath.Vector3f32 = {0, 0, 0}
-	pos: lmath.Vector3f32 = {0, 0, 0}
-	rot: lmath.Vector3f32 = {0, 0, 0}
+	cam_pos: lmath.V3 = {0, -3, -20}
+	cam_rot: lmath.V3 = {0, 0, 0}
+	pos: lmath.V3 = {0, 0, 0}
+	rot: lmath.V3 = {0, 0, 0}
 
 	model: render.Model = {}
 	model.mesh = car_mesh
@@ -51,8 +52,8 @@ main :: proc() {
 	model_2.mesh = cube_mesh
 	model_2.shaders = make([]render.Shader, len(cube_mesh.parts))
 
-	render.add_draw(model.mesh, lmath.MATRIX4F32_IDENTITY)
-	render.add_draw(cube_mesh, lmath.matrix4_translate(lmath.Vector3f32({2, 0, 1})))
+	render.add_draw(model.mesh, lmath.M4_Identity)
+	render.add_draw(cube_mesh, lmath.translate(lmath.V3({2, 0, 1})))
 
 	for i in 0 ..< len(model.shaders) {
 		model.shaders[i] = shader
@@ -82,14 +83,14 @@ main :: proc() {
 
 		//cam_pos.z += f32(window.get_delta_time())
 
-		perspective := lmath.matrix4_perspective(
-			60 * lmath.RAD_PER_DEG,
+		perspective := lmath.M4_perspective(
+			60 * lmath.DEG_TO_RAD,
 			window.get_window_aspect(),
 			0.05,
 			1000,
 			true,
 		)
-		cam_mat := lmath.matrix4_translate(cam_pos)
+		cam_mat := lmath.translate(cam_pos)
 		// cam_mat *= linalg.matrix4_from_quaternion_f32(
 		// 	linalg.quaternion_from_pitch_yaw_roll_f32(cam_rot.x, cam_rot.y, cam_rot.z),
 		// )
@@ -101,11 +102,9 @@ main :: proc() {
 		// )
 
 		rot.y += f32(window.get_delta_time() * 0.1)
-		transform := lmath.identity(lmath.Matrix4f32)
+		transform := lmath.M4_Identity
 		//transform = linalg.matrix4_translate_f32(pos)
-		transform *= lmath.matrix4_from_quaternion(
-			lmath.quaternion_from_pitch_yaw_roll(rot.x, rot.y, rot.z),
-		)
+		transform *= lmath.M4_from_Q(lmath.Q_from_euler(rot.x, rot.y, rot.z))
 
 		gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) // clear with the color set above
