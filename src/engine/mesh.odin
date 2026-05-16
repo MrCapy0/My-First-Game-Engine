@@ -1,5 +1,10 @@
 package engine
 
+import queue "core:container/queue"
+import lmath "core:math/linalg"
+
+MAX_INSTANCES_DRAW_PER_MESH :: 100000
+
 MeshPart :: struct {
 	vao:            u32,
 	vbo:            u32,
@@ -9,5 +14,10 @@ MeshPart :: struct {
 }
 
 Mesh :: struct {
-	parts: []^MeshPart,
+	draw_count:        u32,
+	instance_buffer:   u32,
+	instances:         ^[MAX_INSTANCES_DRAW_PER_MESH]lmath.Matrix4f32,
+	instances_keys:    ^[MAX_INSTANCES_DRAW_PER_MESH]^u32,
+	free_instance_ids: ^queue.Queue(^u32),
+	parts:             []^MeshPart,
 }

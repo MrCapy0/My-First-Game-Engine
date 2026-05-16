@@ -5,6 +5,7 @@ import lmath "core:math/linalg"
 import "core:math/rand"
 import gl "vendor:OpenGL"
 
+import "src/engine/console"
 import "src/engine/model"
 import "src/engine/render"
 import "src/engine/window"
@@ -20,13 +21,13 @@ main :: proc() {
 
 	window.init(default_context)
 
-	//cube := model.from_file("assets/models/Cube.glb")
+	cube_mesh := model.from_file("assets/models/Cube.glb")
 	//plane_2 := model.from_file("assets/models/Plane.glb")
 	//test := model.from_file("assets/models/Test.glb")
 	//tutorial1 := model.from_file("assets/models/tutorial1.glb")
 	//mesh := model.from_file("assets/models/triangle.glb")
 	//mesh := model.from_file("assets/models/House_5.glb")
-	mesh := model.from_file("assets/models/car.glb")
+	car_mesh := model.from_file("assets/models/car.glb")
 	shader := render.load_shader("my_shader.vert", "my_shader.frag")
 
 	view_param_loc := gl.GetUniformLocation(shader.program, "v")
@@ -34,10 +35,6 @@ main :: proc() {
 	transform_param_loc := gl.GetUniformLocation(shader.program, "t")
 
 	window.set_cursor_visible(true)
-
-	vbo: u32
-	vao: u32
-	ebo: u32
 
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
@@ -47,85 +44,37 @@ main :: proc() {
 	rot: lmath.Vector3f32 = {0, 0, 0}
 
 	model: render.Model = {}
-	model.mesh = mesh
-	model.shaders = make([]render.Shader, len(mesh.parts))
+	model.mesh = car_mesh
+	model.shaders = make([]render.Shader, len(car_mesh.parts))
 
+	model_2: render.Model = {}
+	model_2.mesh = cube_mesh
+	model_2.shaders = make([]render.Shader, len(cube_mesh.parts))
 
-	instances: [10]lmath.Matrix4f32
+	render.add_draw(model.mesh, lmath.MATRIX4F32_IDENTITY)
+	render.add_draw(cube_mesh, lmath.matrix4_translate(lmath.Vector3f32({2, 0, 1})))
 
-	for i in 0 ..< 10 {
-		x := rand.float32_range(-10, 10)
-		z := rand.float32_range(-20, 20)
-		instances[i] = lmath.matrix4_translate(lmath.Vector3f32({x, 0, z}))
-	}
-
-	v4_size := size_of(lmath.Vector4f32)
-	m4_size := size_of(lmath.Matrix4f32)
-
-	instances_buffer_id: u32
-	gl.GenBuffers(1, &instances_buffer_id)
-	gl.BindBuffer(gl.ARRAY_BUFFER, instances_buffer_id)
-	gl.BufferData(gl.ARRAY_BUFFER, 10 * m4_size, &instances, gl.STATIC_DRAW)
-
-	for part, i in mesh.parts {
+	for i in 0 ..< len(model.shaders) {
 		model.shaders[i] = shader
-
-		vao := part.vao
-
-		gl.BindVertexArray(vao)
-
-		gl.VertexAttribPointer(
-			render.MATRIX_INSTANCING_ATTRIB,
-			4,
-			gl.FLOAT,
-			gl.FALSE,
-			i32(4 * v4_size),
-			0,
-		)
-
-		gl.VertexAttribPointer(
-			render.MATRIX_INSTANCING_ATTRIB + 1,
-			4,
-			gl.FLOAT,
-			gl.FALSE,
-			i32(4 * v4_size),
-			uintptr(v4_size),
-		)
-
-		gl.VertexAttribPointer(
-			render.MATRIX_INSTANCING_ATTRIB + 2,
-			4,
-			gl.FLOAT,
-			gl.FALSE,
-			i32(4 * v4_size),
-			uintptr(2 * v4_size),
-		)
-
-		gl.VertexAttribPointer(
-			render.MATRIX_INSTANCING_ATTRIB + 3,
-			4,
-			gl.FLOAT,
-			gl.FALSE,
-			i32(4 * v4_size),
-			uintptr(3 * v4_size),
-		)
-
-		gl.EnableVertexAttribArray(render.MATRIX_INSTANCING_ATTRIB)
-		gl.EnableVertexAttribArray(render.MATRIX_INSTANCING_ATTRIB + 1)
-		gl.EnableVertexAttribArray(render.MATRIX_INSTANCING_ATTRIB + 2)
-		gl.EnableVertexAttribArray(render.MATRIX_INSTANCING_ATTRIB + 3)
-
-		gl.VertexAttribDivisor(render.MATRIX_INSTANCING_ATTRIB, 1)
-		gl.VertexAttribDivisor(render.MATRIX_INSTANCING_ATTRIB + 1, 1)
-		gl.VertexAttribDivisor(render.MATRIX_INSTANCING_ATTRIB + 2, 1)
-		gl.VertexAttribDivisor(render.MATRIX_INSTANCING_ATTRIB + 3, 1)
 	}
+
+	for i in 0 ..< len(model_2.shaders) {
+		model_2.shaders[i] = shader
+	}
+
+	test := false
 
 	for true {
 		window.update_events()
 
 		if window.is_key_triggered(window.KEYS.Escape) {
 			break
+		}
+
+		if window.is_key_triggered(window.KEYS.Enter) {
+		}
+
+		if window.is_key_triggered(window.KEYS.Space) {
 		}
 
 		cam_rot.y += f32(window.get_delta_time()) * 0.1
@@ -166,7 +115,9 @@ main :: proc() {
 		gl.UniformMatrix4fv(perspective_param_loc, 1, gl.FALSE, &perspective[0, 0])
 		gl.UniformMatrix4fv(transform_param_loc, 1, gl.FALSE, &transform[0, 0])
 
+
 		render.draw_model(model)
+		render.draw_model(model_2)
 		window.update_draw()
 	}
 
