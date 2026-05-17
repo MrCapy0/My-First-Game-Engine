@@ -241,7 +241,7 @@ set_view :: proc(v: ViewSettings) {
 			1,
 			view.settings.near,
 			view.settings.far,
-			true,
+			false,
 		),
 	}
 

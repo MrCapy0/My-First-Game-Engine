@@ -7,13 +7,15 @@ import window "../../../window"
 
 FlyCameraData :: struct {
 	view:            render.ViewSettings,
+	look_euler:      lmath.V2,
 	smooth_move_dir: lmath.V3,
 }
 
 mob_transform: lmath.Transform
 fly_camera_data: FlyCameraData
 
-FLY_CAMERA_MAX_SPEED: f32 : 2.0
+CAMERA_LOOK_SPEED: f32 : 0.001
+FLY_CAMERA_MAX_SPEED: f32 : 5.0
 FLY_CAMERA_ACCELERATION: f32 : 3.0
 
 start :: proc() {
@@ -28,7 +30,8 @@ start :: proc() {
 	fly_camera_data.smooth_move_dir = lmath.V3_ZERO
 
 	render.set_view(fly_camera_data.view)
-	window.set_cursor_visible(false)
+	//window.set_cursor_visible(false)
+	window.set_cursor_enabled(false)
 }
 
 update :: proc(dt: f32) {
@@ -38,6 +41,7 @@ update :: proc(dt: f32) {
 @(private)
 update_fly_camera :: proc(dt: f32) {
 
+	// Movement.
 	w_pressed := window.is_key_down(window.KEYS.W)
 	a_pressed := window.is_key_down(window.KEYS.A)
 	s_pressed := window.is_key_down(window.KEYS.S)
@@ -61,11 +65,11 @@ update_fly_camera :: proc(dt: f32) {
 	}
 
 	if d_pressed {
-		move_dir -= right
+		move_dir += right
 	}
 
 	if a_pressed {
-		move_dir += right
+		move_dir -= right
 	}
 
 	if e_pressed {
@@ -78,8 +82,11 @@ update_fly_camera :: proc(dt: f32) {
 
 	if lmath.get_V_f32_length(move_dir) > 0.1 {
 
-		fly_camera_data.smooth_move_dir += (move_dir * FLY_CAMERA_ACCELERATION)
-		fly_camera_data.smooth_move_dir = lmath.normalize_V(fly_camera_data.smooth_move_dir)
+		fly_camera_data.smooth_move_dir += (move_dir * FLY_CAMERA_ACCELERATION) * dt
+		if lmath.get_V_f32_length(fly_camera_data.smooth_move_dir) > 1 {
+			fly_camera_data.smooth_move_dir = lmath.normalize_V(fly_camera_data.smooth_move_dir)
+		}
+
 	} else {
 
 		l := lmath.get_V_length(fly_camera_data.smooth_move_dir)
@@ -93,5 +100,22 @@ update_fly_camera :: proc(dt: f32) {
 	move := fly_camera_data.smooth_move_dir * FLY_CAMERA_MAX_SPEED
 	fly_camera_data.view.transform.pos += move * dt
 
+	// Rotation.
+	look_delta := lmath.V2_ZERO
+	look_delta += window.get_mouse_delta() * CAMERA_LOOK_SPEED
+	fly_camera_data.look_euler.x += look_delta.y
+	fly_camera_data.look_euler.y += look_delta.x
+
+	if fly_camera_data.look_euler.x > 360 {
+		fly_camera_data.look_euler.x -= 360
+	}
+
+	if fly_camera_data.look_euler.y > 360 {
+		fly_camera_data.look_euler.y -= 360
+	}
+
+	look_euler := lmath.V3{fly_camera_data.look_euler.x, fly_camera_data.look_euler.y, 0}
+	fly_camera_data.view.transform.rot = lmath.Q_from_euler(look_euler)
+	// Apply.
 	render.set_view(fly_camera_data.view)
 }

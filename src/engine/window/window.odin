@@ -268,14 +268,9 @@ get_mouse_delta :: #force_inline proc() -> [2]f32 {
 	return mouse_delta
 }
 
-set_cursor_visible :: #force_inline proc(visible: bool) {
+set_cursor_enabled :: #force_inline proc(enabled: bool) {
 
-	if visible == cursor_visible {
-		return
-	}
-
-	cursor_visible = visible
-	mode := visible ? glfw.CURSOR_NORMAL : glfw.CURSOR_HIDDEN
+	mode := enabled ? glfw.CURSOR_NORMAL : glfw.CURSOR_DISABLED
 	glfw.SetInputMode(glfw_window, glfw.CURSOR, i32(mode))
 }
 

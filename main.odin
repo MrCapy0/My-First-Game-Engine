@@ -35,8 +35,6 @@ main :: proc() {
 	perspective_param_loc := gl.GetUniformLocation(shader.program, "p")
 	transform_param_loc := gl.GetUniformLocation(shader.program, "t")
 
-	window.set_cursor_visible(true)
-
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	pos: lmath.V3 = {0, 0, 0}

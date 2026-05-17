@@ -74,8 +74,12 @@ M4_from_Q :: M4_f32_from_Q_f32
 M4_perspective :: M4_f32_perspective
 M4_inverse :: M4_f32_inverse
 
-Q_f32_from_euler :: linalg.quaternion_from_pitch_yaw_roll
+Q_f32_from_euler_xyz_f32 :: linalg.quaternion_from_pitch_yaw_roll_f32
 get_Q_f32_direction :: linalg.quaternion128_mul_vector3
+
+Q_f32_from_euler_V3_f32 :: proc(v: V3_f32) -> Q_f32 {
+	return Q_f32_from_euler_xyz_f32(v.x, v.y, v.z)
+}
 
 @(require_results)
 get_Q_f32_forward :: proc(q: Q) -> V3_f32 {
@@ -92,7 +96,10 @@ get_Q_f32_up :: proc(q: Q) -> V3_f32 {
 	return get_Q_direction(q, V3_UP)
 }
 
-Q_from_euler :: Q_f32_from_euler
+Q_from_euler :: proc {
+	Q_f32_from_euler_xyz_f32,
+	Q_f32_from_euler_V3_f32,
+}
 get_Q_direction :: get_Q_f32_direction
 get_Q_forward :: get_Q_f32_forward
 get_Q_right :: get_Q_f32_right

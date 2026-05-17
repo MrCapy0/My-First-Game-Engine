@@ -18,7 +18,7 @@ layout (location = 10) in mat4 instance_t;
 
 void main()
 {
-	mat4 mvp = (camera.perspective * camera.translation) * instance_t;
+	mat4 mvp = (camera.perspective * camera.rotation * camera.translation) * instance_t;
 	gl_Position = mvp * vec4(aPos, 1.0);
 	ourColor = aColor;
 	TexCoord = vec2(aTexCoord.x, aTexCoord.y);
