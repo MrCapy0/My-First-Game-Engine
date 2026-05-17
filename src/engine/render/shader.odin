@@ -113,6 +113,15 @@ load_shader :: proc(v_path: string, f_path: string) -> Shader {
 		return {}
 	}
 
+	// UBOs
+
+	gl.BindBuffer(gl.UNIFORM_BUFFER, view.ubo)
+
+	view_ubo := gl.GetUniformBlockIndex(program, "CameraData")
+	gl.UniformBlockBinding(program, view_ubo, UBO_VIEW_BINDING_ID)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, UBO_VIEW_BINDING_ID, view.ubo)
+	gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
+
 	new_shader: Shader = {
 		program = program,
 	}

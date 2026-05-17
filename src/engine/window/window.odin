@@ -232,6 +232,10 @@ end :: proc() {
 	delete(triggered_keyboard_keys)
 }
 
+should_close :: proc() -> bool {
+	return bool(glfw.WindowShouldClose(glfw_window))
+}
+
 get_delta_time :: #force_inline proc() -> f64 {
 	return delta_time
 }

@@ -11,8 +11,7 @@ import "src/engine/window"
 
 import lmath "src/engine/lmath"
 
-GL_MAJOR_VERSION :: 4
-GL_MINOR_VERSION :: 1
+import game "src/engine/game"
 
 default_context: runtime.Context
 
@@ -21,6 +20,7 @@ main :: proc() {
 	default_context = context
 
 	window.init(default_context)
+	render.start()
 
 	cube_mesh := model.from_file("assets/models/Cube.glb")
 	//plane_2 := model.from_file("assets/models/Plane.glb")
@@ -39,8 +39,6 @@ main :: proc() {
 
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
-	cam_pos: lmath.V3 = {0, -3, -20}
-	cam_rot: lmath.V3 = {0, 0, 0}
 	pos: lmath.V3 = {0, 0, 0}
 	rot: lmath.V3 = {0, 0, 0}
 
@@ -65,55 +63,24 @@ main :: proc() {
 
 	test := false
 
-	for true {
+	game.start()
+
+	for !window.should_close() {
 		window.update_events()
 
 		if window.is_key_triggered(window.KEYS.Escape) {
 			break
 		}
 
-		if window.is_key_triggered(window.KEYS.Enter) {
-		}
+		dt := window.get_delta_time()
+		game.update(f32(dt))
 
-		if window.is_key_triggered(window.KEYS.Space) {
-		}
-
-		cam_rot.y += f32(window.get_delta_time()) * 0.1
-		pos.y += f32(window.get_delta_time()) / 3
-
-		//cam_pos.z += f32(window.get_delta_time())
-
-		perspective := lmath.M4_perspective(
-			60 * lmath.DEG_TO_RAD,
-			window.get_window_aspect(),
-			0.05,
-			1000,
-			true,
-		)
-		cam_mat := lmath.translate(cam_pos)
-		// cam_mat *= linalg.matrix4_from_quaternion_f32(
-		// 	linalg.quaternion_from_pitch_yaw_roll_f32(cam_rot.x, cam_rot.y, cam_rot.z),
-		// )
-		// cam_mat := linalg.matrix4_look_at(
-		// 	cam_pos,
-		// 	linalg.Vector3f32({0, 0, 0}),
-		// 	linalg.Vector3f32({0, 1, 0}),
-		// 	true,
-		// )
-
-		rot.y += f32(window.get_delta_time() * 0.1)
 		transform := lmath.M4_Identity
 		//transform = linalg.matrix4_translate_f32(pos)
 		transform *= lmath.M4_from_Q(lmath.Q_from_euler(rot.x, rot.y, rot.z))
 
 		gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) // clear with the color set above
-
-		gl.UseProgram(shader.program)
-		gl.UniformMatrix4fv(view_param_loc, 1, gl.FALSE, &cam_mat[0, 0])
-		gl.UniformMatrix4fv(perspective_param_loc, 1, gl.FALSE, &perspective[0, 0])
-		gl.UniformMatrix4fv(transform_param_loc, 1, gl.FALSE, &transform[0, 0])
-
 
 		render.draw_model(model)
 		render.draw_model(model_2)

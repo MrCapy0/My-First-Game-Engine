@@ -1,8 +1,8 @@
 package render
 
 import engine "../"
+import lmath "../lmath"
 import "core:container/queue"
-import lmath "core:math/linalg"
 import gl "vendor:OpenGL"
 
 @(private)
@@ -14,19 +14,79 @@ MeshPart :: engine.MeshPart
 POSITION_ATTRIB :: 0
 MATRIX_INSTANCING_ATTRIB :: 10
 
+UBO_VIEW_BINDING_ID :: 0
+
+ViewSettings :: struct {
+	transform: lmath.Transform,
+	fov:       f32,
+	near:      f32,
+	far:       f32,
+}
+
+@(private)
+ViewData :: struct {
+	perspective: lmath.M4,
+	translation: lmath.M4,
+	rotation:    lmath.M4,
+}
+
+@(private)
+View :: struct {
+	ubo:      u32,
+	settings: ViewSettings,
+	data:     ViewData,
+}
+
+@(private)
+view: View
+
+start :: proc() {
+
+	// View.
+	{
+		gl.GenBuffers(1, &view.ubo)
+		gl.BindBuffer(gl.UNIFORM_BUFFER, view.ubo)
+		gl.BufferData(gl.UNIFORM_BUFFER, size_of(ViewData), nil, gl.STATIC_DRAW)
+
+		// Default settings.
+		view.settings = {
+			near = 0.02,
+			far = 10000,
+			fov = 60,
+			transform = {pos = lmath.V3_ZERO, rot = lmath.Q_Identity},
+		}
+
+		view.data = {
+			translation = lmath.M4_inverse(lmath.translate(lmath.V3({0, 0, 0}))),
+			rotation    = lmath.M4_Identity,
+			perspective = lmath.M4_perspective(
+				view.settings.fov * lmath.DEG_TO_RAD,
+				1,
+				view.settings.near,
+				view.settings.far,
+				true,
+			),
+		}
+
+		// Send data to GPU.
+		gl.BufferSubData(gl.UNIFORM_BUFFER, 0, size_of(ViewData), &view.data)
+		gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
+	}
+}
+
 create_gpu_mesh :: proc(mesh: ^Mesh) {
 
 	mesh.draw_count = 0
-	mesh.instances = new([engine.MAX_INSTANCES_DRAW_PER_MESH]lmath.Matrix4f32)
+	mesh.instances = new([engine.MAX_INSTANCES_DRAW_PER_MESH]lmath.M4)
 	mesh.instances_keys = new([engine.MAX_INSTANCES_DRAW_PER_MESH]^u32)
-	v4_size := size_of(lmath.Vector4f32)
+	v4_size := size_of(lmath.V4)
 
 	// Instancing buffer.
 	gl.GenBuffers(1, &mesh.instance_buffer)
 	gl.BindBuffer(gl.ARRAY_BUFFER, mesh.instance_buffer)
 	gl.BufferData(
 		gl.ARRAY_BUFFER,
-		engine.MAX_INSTANCES_DRAW_PER_MESH * size_of(lmath.Matrix4f32),
+		engine.MAX_INSTANCES_DRAW_PER_MESH * size_of(lmath.M4),
 		raw_data(mesh.instances),
 		gl.STATIC_DRAW,
 	)
@@ -137,7 +197,7 @@ draw_model :: proc(model: Model) {
 	}
 }
 
-add_draw :: proc(mesh: ^Mesh, world: lmath.Matrix4f32) -> ^u32 {
+add_draw :: proc(mesh: ^Mesh, world: lmath.M4) -> ^u32 {
 
 	// TODO: Check parameters.
 
@@ -169,10 +229,32 @@ remove_draw :: proc(mesh: ^Mesh, id: ^u32) {
 	mesh.draw_count -= 1
 }
 
+set_view :: proc(v: ViewSettings) {
+
+	// TODO: Send to GPU only on draw.
+
+	view.data = {
+		translation = lmath.M4_inverse(lmath.translate(v.transform.pos)),
+		rotation    = lmath.M4_inverse(lmath.M4_from_Q(v.transform.rot)),
+		perspective = lmath.M4_perspective(
+			view.settings.fov * lmath.DEG_TO_RAD,
+			1,
+			view.settings.near,
+			view.settings.far,
+			true,
+		),
+	}
+
+	gl.BindBuffer(gl.UNIFORM_BUFFER, view.ubo)
+	gl.BufferSubData(gl.UNIFORM_BUFFER, 0, size_of(ViewData), &view.data)
+	gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
+}
+
+@(private)
 update_instance :: proc(mesh: ^Mesh, id: ^u32) {
 
 	world := mesh.instances[id^]
-	matrix_size := int(size_of(lmath.Matrix4f32))
+	matrix_size := int(size_of(lmath.M4))
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, mesh.instance_buffer)
 	gl.BufferSubData(gl.ARRAY_BUFFER, int(id^) * matrix_size, matrix_size, &world[0, 0])
