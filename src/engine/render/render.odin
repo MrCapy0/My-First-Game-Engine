@@ -32,6 +32,7 @@ ViewData :: struct {
 
 @(private)
 View :: struct {
+	updated:  bool,
 	ubo:      u32,
 	settings: ViewSettings,
 	data:     ViewData,
@@ -44,9 +45,11 @@ start :: proc() {
 
 	// View.
 	{
+		// Create view UBO.
 		gl.GenBuffers(1, &view.ubo)
 		gl.BindBuffer(gl.UNIFORM_BUFFER, view.ubo)
 		gl.BufferData(gl.UNIFORM_BUFFER, size_of(ViewData), nil, gl.STATIC_DRAW)
+		gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
 
 		// Default settings.
 		view.settings = {
@@ -56,6 +59,7 @@ start :: proc() {
 			transform = {pos = lmath.V3_ZERO, rot = lmath.Q_Identity},
 		}
 
+		view.updated = true
 		view.data = {
 			translation = lmath.M4_inverse(lmath.translate(lmath.V3({0, 0, 0}))),
 			rotation    = lmath.M4_Identity,
@@ -67,10 +71,19 @@ start :: proc() {
 				true,
 			),
 		}
+	}
+}
 
-		// Send data to GPU.
-		gl.BufferSubData(gl.UNIFORM_BUFFER, 0, size_of(ViewData), &view.data)
-		gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
+update :: proc() {
+
+	// Update view.
+	{
+		if view.updated {
+			view.updated = false
+			gl.BindBuffer(gl.UNIFORM_BUFFER, view.ubo)
+			gl.BufferSubData(gl.UNIFORM_BUFFER, 0, size_of(ViewData), &view.data)
+			gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
+		}
 	}
 }
 
@@ -233,9 +246,10 @@ set_view :: proc(v: ViewSettings) {
 
 	// TODO: Send to GPU only on draw.
 
+	view.updated = true
 	view.data = {
 		translation = lmath.M4_inverse(lmath.translate(v.transform.pos)),
-		rotation    = lmath.M4_inverse(lmath.M4_from_Q(v.transform.rot)),
+		rotation    = lmath.M4_inverse(lmath.Q_to_M4(v.transform.rot)),
 		perspective = lmath.M4_perspective(
 			view.settings.fov * lmath.DEG_TO_RAD,
 			1,
@@ -244,10 +258,6 @@ set_view :: proc(v: ViewSettings) {
 			false,
 		),
 	}
-
-	gl.BindBuffer(gl.UNIFORM_BUFFER, view.ubo)
-	gl.BufferSubData(gl.UNIFORM_BUFFER, 0, size_of(ViewData), &view.data)
-	gl.BindBuffer(gl.UNIFORM_BUFFER, 0)
 }
 
 @(private)

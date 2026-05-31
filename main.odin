@@ -73,15 +73,14 @@ main :: proc() {
 		dt := window.get_delta_time()
 		game.update(f32(dt))
 
-		transform := lmath.M4_Identity
-		//transform = linalg.matrix4_translate_f32(pos)
-		transform *= lmath.M4_from_Q(lmath.Q_from_euler(rot.x, rot.y, rot.z))
 
 		gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) // clear with the color set above
 
 		render.draw_model(model)
 		render.draw_model(model_2)
+		render.update()
+
 		window.update_draw()
 	}
 

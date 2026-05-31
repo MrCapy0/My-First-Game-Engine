@@ -4,6 +4,7 @@ import console "../../../console"
 import lmath "../../../lmath"
 import render "../../../render"
 import window "../../../window"
+import "core:math"
 
 FlyCameraData :: struct {
 	view:            render.ViewSettings,
@@ -14,7 +15,10 @@ FlyCameraData :: struct {
 mob_transform: lmath.Transform
 fly_camera_data: FlyCameraData
 
-CAMERA_LOOK_SPEED: f32 : 0.001
+CAMERA_MIN_X: f32 : -80
+CAMERA_MAX_X: f32 : 90
+CAMERA_SMOOTH_SPEED: f32 : 10.0
+CAMERA_LOOK_SPEED: f32 : 4
 FLY_CAMERA_MAX_SPEED: f32 : 5.0
 FLY_CAMERA_ACCELERATION: f32 : 3.0
 
@@ -93,7 +97,8 @@ update_fly_camera :: proc(dt: f32) {
 		if l > 0.01 {
 
 			deceleration: lmath.V3 = fly_camera_data.smooth_move_dir / l
-			fly_camera_data.smooth_move_dir -= deceleration
+			fly_camera_data.smooth_move_dir -=
+				(deceleration * lmath.get_V_length(fly_camera_data.smooth_move_dir))
 		}
 	}
 
@@ -102,20 +107,42 @@ update_fly_camera :: proc(dt: f32) {
 
 	// Rotation.
 	look_delta := lmath.V2_ZERO
-	look_delta += window.get_mouse_delta() * CAMERA_LOOK_SPEED
+	look_delta += window.get_mouse_delta() * CAMERA_LOOK_SPEED * dt
 	fly_camera_data.look_euler.x += look_delta.y
 	fly_camera_data.look_euler.y += look_delta.x
 
-	if fly_camera_data.look_euler.x > 360 {
+	if fly_camera_data.look_euler.x > 180 {
 		fly_camera_data.look_euler.x -= 360
+	}
+
+	if fly_camera_data.look_euler.x < -180 {
+		fly_camera_data.look_euler.x += 360
 	}
 
 	if fly_camera_data.look_euler.y > 360 {
 		fly_camera_data.look_euler.y -= 360
 	}
 
-	look_euler := lmath.V3{fly_camera_data.look_euler.x, fly_camera_data.look_euler.y, 0}
-	fly_camera_data.view.transform.rot = lmath.Q_from_euler(look_euler)
+	if fly_camera_data.look_euler.y < 0 {
+		fly_camera_data.look_euler.y += 360
+	}
+
+	fly_camera_data.look_euler.x = math.clamp(
+		fly_camera_data.look_euler.x,
+		CAMERA_MIN_X,
+		CAMERA_MAX_X,
+	)
+
+	look_q := lmath.euler_to_Q(fly_camera_data.look_euler.x, fly_camera_data.look_euler.y, 0)
+	angle := lmath.angle_between(look_q, fly_camera_data.view.transform.rot)
+
+	smooth_speed := math.saturate(dt * CAMERA_SMOOTH_SPEED)
+	smooth_speed = math.max(smooth_speed, dt * CAMERA_LOOK_SPEED * angle)
+
+	look_smooth_rot := lmath.Q_slerp(fly_camera_data.view.transform.rot, look_q, smooth_speed)
+
+	fly_camera_data.view.transform.rot = look_smooth_rot
+
 	// Apply.
 	render.set_view(fly_camera_data.view)
 }
