@@ -12,6 +12,7 @@ ColorModes :: enum {
 
 Texture :: struct {
 	id:     u32,
+	gl:     u32,
 	width:  u32,
 	height: u32,
 	color:  ColorModes,
@@ -66,6 +67,7 @@ load_texture :: proc(path: string) -> Texture {
 		id     = u32(len(loaded_textures)),
 		width  = u32(img.width),
 		height = u32(img.height),
+		gl     = texture_id,
 	}
 
 	new_texture_internal: TextureInternal = {

@@ -12,6 +12,7 @@ Mesh :: engine.Mesh
 MeshPart :: engine.MeshPart
 
 POSITION_ATTRIB :: 0
+UV_ATTRIB :: 2
 MATRIX_INSTANCING_ATTRIB :: 10
 
 UBO_VIEW_BINDING_ID :: 0
@@ -130,8 +131,12 @@ create_gpu_mesh :: proc(mesh: ^Mesh) {
 			gl.STATIC_DRAW,
 		)
 
-		gl.VertexAttribPointer(POSITION_ATTRIB, 3, gl.FLOAT, gl.FALSE, size_of(f32) * 3, 0)
+		stride: i32 = size_of(f32) * (3 + 2)
+		gl.VertexAttribPointer(POSITION_ATTRIB, 3, gl.FLOAT, gl.FALSE, stride, 0)
 		gl.EnableVertexAttribArray(POSITION_ATTRIB)
+
+		gl.VertexAttribPointer(UV_ATTRIB, 2, gl.FLOAT, gl.FALSE, stride, uintptr(3 * size_of(f32)))
+		gl.EnableVertexAttribArray(UV_ATTRIB)
 
 		// Configure instancing buffer.
 		gl.BindBuffer(gl.ARRAY_BUFFER, mesh.instance_buffer)

@@ -181,6 +181,7 @@ init :: proc(c: runtime.Context) {
 	glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, GL_MINOR_VERSION)
 
 	glfw_window = glfw.CreateWindow(800, 640, "Todo", nil, nil)
+	glfw.SetWindowPos(glfw_window, 500, 200)
 
 	if glfw_window == nil {
 		fmt.println("Unable to create window")

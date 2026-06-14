@@ -14,4 +14,6 @@ void main()
 	FragColor = texture(texture1, TexCoord);
 	FragColor.rgb *= color;
 	FragColor.rgb *= mult;
+	FragColor.rgb = texture(texture1, TexCoord).rgb;
+	FragColor.a = 1;
 }

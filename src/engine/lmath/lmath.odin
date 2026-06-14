@@ -66,6 +66,13 @@ translate :: proc {
 	M4_translate,
 }
 
+M4_f32_scale :: linalg.matrix4_scale_f32
+M4_scale :: M4_f32_scale
+
+scale :: proc {
+	M4_scale,
+}
+
 M4_f32_perspective :: linalg.matrix4_perspective_f32
 M4_f32_inverse :: linalg.matrix4_inverse_f32
 

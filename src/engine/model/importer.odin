@@ -32,18 +32,6 @@ from_file :: proc(path: string) -> ^Mesh {
 		return {}
 	}
 
-	console.log("scenes %d", len(data.scenes))
-	for s in data.scenes {
-		console.log("Scene %s", s.name)
-		for n in s.nodes {
-			log_scene_node(data, n, 1)
-		}
-	}
-	console.log("Meshes %d", len(data.meshes))
-	for m in data.meshes {
-		console.log("	%s", m.name)
-	}
-
 	gltf_mesh := data.meshes[0]
 	mesh := new(Mesh)
 	mesh.parts = make([]^MeshPart, len(gltf_mesh.primitives))
@@ -68,7 +56,9 @@ process_mesh_part :: proc(data: ^gltf.data, primitive: gltf.primitive) -> ^MeshP
 	}
 
 	position_buffer: []f32
+	uv_buffer: []f32
 	position_count: uint
+	uv_count: uint
 
 	for att in primitive.attributes {
 
@@ -76,8 +66,6 @@ process_mesh_part :: proc(data: ^gltf.data, primitive: gltf.primitive) -> ^MeshP
 		if (att.type == .position) {
 
 			position_count = accessor.count
-
-			console.log("Vertices count %d", position_count)
 
 			if (accessor.component_type != .r_32f) {
 
@@ -99,6 +87,21 @@ process_mesh_part :: proc(data: ^gltf.data, primitive: gltf.primitive) -> ^MeshP
 
 			position_buffer = make([]f32, position_count * 3)
 			count := gltf.accessor_unpack_floats(accessor, &position_buffer[0], position_count * 3)
+		}
+
+		if att.type == .texcoord {
+
+			if (accessor.type != .vec2) {
+				console.error(
+					"Invalid mesh! texcoord type must be %v but is %v",
+					gltf.type.vec2,
+					accessor.type,
+				)
+			}
+
+			uv_count = accessor.count
+			uv_buffer = make([]f32, uv_count * 2)
+			count := gltf.accessor_unpack_floats(accessor, &uv_buffer[0], uv_count * 2)
 		}
 	}
 
@@ -123,12 +126,30 @@ process_mesh_part :: proc(data: ^gltf.data, primitive: gltf.primitive) -> ^MeshP
 		indices_accessor.count,
 	)
 
+	// TODO: The buffer len is the sum of all buffers.
+	// Maybe we can decrease buffer size adding options to not import some data like UVs?
+	buffer_len := (position_count * 3) + (uv_count * 2)
+
 	part := new(MeshPart)
-	part.buffer = make([]f32, position_count * 3)
+	part.buffer = make([]f32, buffer_len)
 	part.indices_buffer = make([]u32, unpacked_indices_count)
 
-	for p, i in position_buffer {
-		part.buffer[i] = p
+	for i in 0 ..< position_count {
+		buffer_stride := i * (3 + 2) // Position + UV.
+		position_stride := i * 3
+		uv_stride := i * 2
+
+		part.buffer[buffer_stride] = position_buffer[position_stride] * -1 // For some reason X is being imported in reverse.
+		part.buffer[buffer_stride + 1] = position_buffer[position_stride + 1]
+		part.buffer[buffer_stride + 2] = position_buffer[position_stride + 2]
+
+		if len(uv_buffer) > 0 {
+			part.buffer[buffer_stride + 3] = uv_buffer[uv_stride]
+			part.buffer[buffer_stride + 4] = uv_buffer[uv_stride + 1]
+		} else {
+			part.buffer[buffer_stride + 3] = 0.0
+			part.buffer[buffer_stride + 4] = 0.0
+		}
 	}
 
 	for indice, i in indices_buffer {
@@ -139,27 +160,4 @@ process_mesh_part :: proc(data: ^gltf.data, primitive: gltf.primitive) -> ^MeshP
 	delete(indices_buffer)
 
 	return part
-}
-
-log_scene_node :: proc(data: ^gltf.data, node: ^gltf.node, iteration: i32) {
-
-	sb: strings.Builder
-	strings.builder_init(&sb)
-	defer strings.builder_destroy(&sb)
-
-	for i: i32 = 0; i < iteration * 4; i += 1 {
-		strings.write_string(&sb, " ")
-	}
-
-	strings.write_string(&sb, string(node.name))
-	strings.write_string(&sb, "		")
-	if node.mesh != nil {
-		strings.write_string(&sb, "mesh: ")
-		strings.write_string(&sb, string(node.mesh.name))
-	}
-
-	console.log("%s", strings.to_string(sb))
-	for n in node.children {
-		log_scene_node(data, n, iteration + 1)
-	}
 }
